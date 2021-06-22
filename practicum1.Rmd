@@ -1,0 +1,238 @@
+---
+title: "Practicum 1 DB"
+output: html_notebook
+---
+
+```{r}
+library(RMySQL)
+
+db_user <- 'dbadmin'
+db_password <- 'dos8JINT.kras8jaun'
+db_name <- 'SandboxDB'
+db_host <- 'cs5200-dbs.ctuc7sl6qeau.us-east-2.rds.amazonaws.com' # AWS Host
+db_port <- 3306
+
+mydb <- dbConnect(MySQL(), dbname = db_name, host = db_host, port = db_port,
+                  user = db_user, password = db_password)
+```
+
+```{r}
+dbListTables(mydb)
+```
+
+```{r}
+## Needed to make sqldf work...learned that when fiddling
+options(sqldf.driver = "SQLite")
+```
+
+```{sql connection=mydb}
+-- Turns off foreign key check
+SET FOREIGN_KEY_CHECKS = 0;
+```
+
+```{sql connection=mydb}
+-- Turns on foreign key check
+SET FOREIGN_KEY_CHECKS = 1;
+```
+
+## Aircraft
+```{sql connection=mydb}
+DROP TABLE IF EXISTS Aircraft;
+```
+
+```{sql connection=mydb}
+CREATE TABLE Aircraft(
+  a_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  aircraft_name VARCHAR(200) NOT NULL,                             -- Do we need to enforce UNIQUE here?
+  aircraft_type ENUM('aircraft', 'unknown') NOT NULL,
+  number_engines ENUM('1', '2', '3', '4', 'C', 'unknown') NOT NULL,
+  large_aircraft ENUM('True', 'False', 'unknown') NOT NULL,
+  );
+```
+
+```{sql connection=mydb}
+SELECT * FROM Aircraft;
+```
+
+## State
+```{sql connection=mydb}
+DROP TABLE IF EXISTS State;
+```
+
+```{sql connection=mydb}
+CREATE TABLE State(
+  s_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  state VARCHAR(200) NOT NULL UNIQUE
+  );
+```
+
+```{sql connection=mydb}
+SELECT * FROM State;
+```
+
+## Airport
+```{sql connection=mydb}
+DROP TABLE IF EXISTS Airport;
+```
+
+```{sql connection=mydb}
+CREATE TABLE Airport(
+  a_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  airport_name VARCHAR(200) NOT NULL,
+  state INTEGER NOT NULL,
+  CONSTRAINT state_fk FOREIGN KEY (state) REFERENCES State(s_id)
+  );
+```
+
+```{sql connection=mydb}
+SELECT * FROM Airport;
+```
+
+## Airline Operator
+```{sql connection=mydb}
+DROP TABLE IF EXISTS AirlineOperator;
+```
+
+```{sql connection=mydb}
+CREATE TABLE AirlineOperator(
+  ao_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  airline_name VARCHAR(200) NOT NULL UNIQUE
+  );
+```
+
+```{sql connection=mydb}
+SELECT * FROM AirlineOperator;
+```
+
+## Flight
+```{sql connection=mydb}
+DROP TABLE IF EXISTS Flight;
+```
+
+```{sql connection=mydb}
+CREATE TABLE Flight(
+  f_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  flight_date DATETIME,
+  aircraft_id INTEGER NOT NULL,
+  origin_airport INTEGER NOT NULL,
+  airline_operator INTEGER NOT NULL,
+  CONSTRAINT aircraft_id_fk FOREIGN KEY (aircraft_id) REFERENCES Aircraft(a_id),
+  CONSTRAINT origin_airport_fk FOREIGN KEY (origin_airport) REFERENCES Airport(a_id),
+  CONSTRAINT airline_operator_fk FOREIGN KEY (airline_operator) REFERENCES AirlineOperator(ao_id),
+  );
+```
+
+```{sql connection=mydb}
+SELECT * FROM Flight;
+```
+
+## Wildlife
+```{sql connection=mydb}
+DROP TABLE IF EXISTS Wildlife;
+```
+
+```{sql connection=mydb}
+CREATE TABLE Wildlife(
+  w_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  species VARCHAR(200) NOT NULL UNIQUE,
+  size ENUM('Small', 'Medium', 'Large', 'Unknown')   -- Do we include unknown?
+  );
+```
+
+```{sql connection=mydb}
+SELECT * FROM Wildlife;
+```
+
+## Note
+```{sql connection=mydb}
+DROP TABLE IF EXISTS Note;
+```
+
+```{sql connection=mydb}
+CREATE TABLE Note(
+  n_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  note VARCHAR(255) NOT NULL       -- Should this be something other than VARCHAR(255)?
+  );
+```
+
+```{sql connection=mydb}
+SELECT * FROM Note;
+```
+
+## Birdstrike
+```{sql connection=mydb}
+DROP TABLE IF EXISTS Birdstrike;
+```
+
+```{sql connection=mydb}
+CREATE TABLE Birdstrike(
+  bs_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  flight_id INTEGER NOT NULL,
+  number_struck_est ENUM('1', '2 to 10', '11 to 100', '100+', 'Unknown') NOT NULL,
+  number_struck_actual INTEGER NOT NULL,
+  phase_of_flight ENUM('Approach', 'Climb', 'Descent', 'Landing Roll', 
+                       'Parked', 'Take-off run', 'Taxi', 'Unknown') NOT NULL,
+  altitude_bin ENUM('< 1000 ft', '> 1000 ft', 'Unknown' NOT NULL,
+  impact_to_flight ENUM('Aborted Take-off', 'Engine Shut Down', 'None', 
+                        'Other', 'Precautionary Landing', 'Unknown') NOT NULL,
+  indicated_damage BOOLEAN NOT NULL,
+  wildlife_remains_collected BOOLEAN NOT NULL,
+  wildlife_remains_smithsonian BOOLEAN NOT NULL,
+  note INTEGER,
+  wildlife_id INTEGER NOT NULL,
+  pilot_warned ENUM('True', 'False', 'Unknown') NOT NULL,
+  total_cost INTEGER NOT NULL,
+  feet_above_ground INTEGER NOT NULL,
+  num_people_injured INTEGER NOT NULL,
+  sky_conditions ENUM('No cloud', 'Overcast', 'Some cloud') NOT NULL,
+  CONSTRAINT note_fk FOREIGN KEY (note) REFERENCES Note(n_id),
+  CONSTRAINT wildlife_id_fk FOREIGN KEY (wildlife_id) REFERENCES Wildlife(w_id)
+  );
+```
+
+```{sql connection=mydb}
+SELECT * FROM Birdstrike;
+```
+```{sql connection=}
+```
+
+## Precipitation
+```{sql connection=mydb}
+DROP TABLE IF EXISTS Precipitation;
+```
+
+```{sql connection=mydb}
+CREATE TABLE Precipitation(
+  p_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  precip_name VARCHAR(200) NOT NULL UNIQUE
+  );
+```
+
+```{sql connection=mydb}
+SELECT * FROM Precipitation;
+```
+
+## Birdstrike To Flight Junction Table
+```{sql connection=mydb}
+DROP TABLE IF EXISTS PrecipFlightJunction;
+```
+
+```{sql connection=mydb}
+CREATE TABLE PrecipToBirdStrike(
+  ptbs_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  precip_id INTEGER NOT NULL,
+  bs_id INTEGER NOT NULL,
+  CONSTRAINT bs_id_fk FOREIGN KEY (bs_id) REFERENCES BirdStrike(bs_id),
+  CONSTRAINT precip_id_fk FOREIGN KEY (precip_id) REFERENCES Precipitation(p_id)
+  );
+```
+
+```{sql connection=mydb}
+SELECT * FROM PrecipFlightJunction;
+```
+
+```{r}
+dbDisconnect(mydb)
+```
+
+
