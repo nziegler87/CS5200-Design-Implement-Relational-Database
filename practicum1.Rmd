@@ -35,6 +35,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 SET FOREIGN_KEY_CHECKS = 1;
 ```
 
+# Creating the tables
+
 ## CREATE TABLE: Aircraft
 
 ```{sql connection=mydb}
@@ -237,6 +239,28 @@ CREATE TABLE PrecipToBirdStrike(
 
 ```{sql connection=mydb}
 SELECT * FROM PrecipToBirdStrike;
+```
+
+# Uploading the data
+
+```{r}
+path <- "C:\Users\tolli\Downloads" # TODO: can update depending on who is uploading
+fn <- "BirdStrikesData.csv"
+
+fileName <- paste(path, fn, sep = "/")
+
+birdStrike_df <- read.csv(fileName, header = TRUE, stringsAsFactors = FALSE)
+```
+
+# Cleaning the data
+
+## Making factors
+
+```{r}
+birdStrike_df$'Aircraft:Type' <- as.factor(birdStrike_df$'Aircraft: Type')
+birdStrike_df$'Altitude bin' <- as.factor(birdStrike_df$'Altitude bin')
+birdStrike_df$'Wildlife: Number struck' <- as.factor(birdStrike_df$'Wildlife: Number struck')
+
 ```
 
 ```{r}
