@@ -35,7 +35,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 SET FOREIGN_KEY_CHECKS = 1;
 ```
 
-## Aircraft
+## CREATE TABLE: Aircraft
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Aircraft;
 ```
@@ -54,7 +54,7 @@ CREATE TABLE Aircraft(
 SELECT * FROM Aircraft;
 ```
 
-## State
+## CREATE TABLE: State
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS State;
 ```
@@ -70,7 +70,7 @@ CREATE TABLE State(
 SELECT * FROM State;
 ```
 
-## Airport
+## CREATE TABLE: Airport
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Airport;
 ```
@@ -88,7 +88,7 @@ CREATE TABLE Airport(
 SELECT * FROM Airport;
 ```
 
-## Airline Operator
+## CREATE TABLE: Airline Operator
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS AirlineOperator;
 ```
@@ -104,7 +104,7 @@ CREATE TABLE AirlineOperator(
 SELECT * FROM AirlineOperator;
 ```
 
-## Flight
+## CREATE TABLE: Flight
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Flight;
 ```
@@ -126,7 +126,7 @@ CREATE TABLE Flight(
 SELECT * FROM Flight;
 ```
 
-## Wildlife
+## CREATE TABLE: Wildlife
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Wildlife;
 ```
@@ -143,7 +143,7 @@ CREATE TABLE Wildlife(
 SELECT * FROM Wildlife;
 ```
 
-## Note
+## CREATE TABLE: Note
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Note;
 ```
@@ -159,7 +159,7 @@ CREATE TABLE Note(
 SELECT * FROM Note;
 ```
 
-## Birdstrike
+## CREATE TABLE: Birdstrike
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Birdstrike;
 ```
@@ -196,7 +196,7 @@ SELECT * FROM Birdstrike;
 ```{sql connection=}
 ```
 
-## Precipitation
+## CREATE TABLE: Precipitation
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Precipitation;
 ```
@@ -212,7 +212,7 @@ CREATE TABLE Precipitation(
 SELECT * FROM Precipitation;
 ```
 
-## Birdstrike To Flight Junction Table
+## CREATE TABLE: Birdstrike To Flight Junction Table
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS PrecipFlightJunction;
 ```
