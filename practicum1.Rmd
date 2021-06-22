@@ -250,7 +250,7 @@ fn <- "BirdStrikesData.csv"
 fileName <- paste(path, fn, sep = "/")
 
 birdStrike_df <- read.csv(fileName, header = TRUE, stringsAsFactors = FALSE, na.strings=c("", " "))
-csv[is.na(csv)] <- 'UNKNOWN'
+birdStrike_df[is.na(birdStrike_df)] <- 'UNKNOWN'
 ```
 
 # Cleaning the data
