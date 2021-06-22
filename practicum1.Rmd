@@ -36,6 +36,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 ```
 
 ## CREATE TABLE: Aircraft
+
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Aircraft;
 ```
@@ -43,9 +44,9 @@ DROP TABLE IF EXISTS Aircraft;
 ```{sql connection=mydb}
 CREATE TABLE Aircraft(
   a_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  aircraft_name VARCHAR(200) NOT NULL,                             -- Do we need to enforce UNIQUE here?
+  aircraft_name VARCHAR(200) NOT NULL,  -- TODO: do we need to enforce UNIQUE here? > not sure... can there be the same aircraft different # engines?
   aircraft_type ENUM('aircraft', 'unknown') NOT NULL,
-  number_engines ENUM('1', '2', '3', '4', 'C', 'unknown') NOT NULL,
+  number_engines ENUM('1', '2', '3', '4', 'C', 'unknown') NOT NULL, -- TODO: we were going to correct C here, I think
   large_aircraft ENUM('True', 'False', 'unknown') NOT NULL,
   );
 ```
@@ -55,6 +56,7 @@ SELECT * FROM Aircraft;
 ```
 
 ## CREATE TABLE: State
+
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS State;
 ```
@@ -71,6 +73,7 @@ SELECT * FROM State;
 ```
 
 ## CREATE TABLE: Airport
+
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Airport;
 ```
@@ -88,7 +91,8 @@ CREATE TABLE Airport(
 SELECT * FROM Airport;
 ```
 
-## CREATE TABLE: Airline Operator
+## CREATE TABLE: AirlineOperator
+
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS AirlineOperator;
 ```
@@ -105,6 +109,7 @@ SELECT * FROM AirlineOperator;
 ```
 
 ## CREATE TABLE: Flight
+
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Flight;
 ```
@@ -127,6 +132,7 @@ SELECT * FROM Flight;
 ```
 
 ## CREATE TABLE: Wildlife
+
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Wildlife;
 ```
@@ -135,7 +141,7 @@ DROP TABLE IF EXISTS Wildlife;
 CREATE TABLE Wildlife(
   w_id INTEGER PRIMARY KEY AUTO_INCREMENT,
   species VARCHAR(200) NOT NULL UNIQUE,
-  size ENUM('Small', 'Medium', 'Large', 'Unknown')   -- Do we include unknown?
+  size ENUM('Small', 'Medium', 'Large', 'Unknown') -- Do we include unknown? TODO: I believe I included it because there are blanks in the excel. 
   );
 ```
 
@@ -144,6 +150,7 @@ SELECT * FROM Wildlife;
 ```
 
 ## CREATE TABLE: Note
+
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Note;
 ```
@@ -151,7 +158,7 @@ DROP TABLE IF EXISTS Note;
 ```{sql connection=mydb}
 CREATE TABLE Note(
   n_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  note VARCHAR(255) NOT NULL       -- Should this be something other than VARCHAR(255)?
+  note TEXT NOT NULL       -- Should this be something other than VARCHAR(255)? > some of the text is > 259 bytes, so we can use TIMYTEXT/TINYBLOB or TEXT/BLOB- I vote TEXT.
   );
 ```
 
@@ -160,6 +167,7 @@ SELECT * FROM Note;
 ```
 
 ## CREATE TABLE: Birdstrike
+
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Birdstrike;
 ```
@@ -178,14 +186,14 @@ CREATE TABLE Birdstrike(
   indicated_damage BOOLEAN NOT NULL,
   wildlife_remains_collected BOOLEAN NOT NULL,
   wildlife_remains_smithsonian BOOLEAN NOT NULL,
-  note INTEGER,
+  note_id INTEGER,
   wildlife_id INTEGER NOT NULL,
   pilot_warned ENUM('True', 'False', 'Unknown') NOT NULL,
   total_cost INTEGER NOT NULL,
   feet_above_ground INTEGER NOT NULL,
   num_people_injured INTEGER NOT NULL,
   sky_conditions ENUM('No cloud', 'Overcast', 'Some cloud') NOT NULL,
-  CONSTRAINT note_fk FOREIGN KEY (note) REFERENCES Note(n_id),
+  CONSTRAINT note_fk FOREIGN KEY (note_id) REFERENCES Note(n_id),
   CONSTRAINT wildlife_id_fk FOREIGN KEY (wildlife_id) REFERENCES Wildlife(w_id)
   );
 ```
@@ -193,10 +201,9 @@ CREATE TABLE Birdstrike(
 ```{sql connection=mydb}
 SELECT * FROM Birdstrike;
 ```
-```{sql connection=}
-```
 
 ## CREATE TABLE: Precipitation
+
 ```{sql connection=mydb}
 DROP TABLE IF EXISTS Precipitation;
 ```
@@ -204,7 +211,7 @@ DROP TABLE IF EXISTS Precipitation;
 ```{sql connection=mydb}
 CREATE TABLE Precipitation(
   p_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  precip_name VARCHAR(200) NOT NULL UNIQUE
+  precip_name VARCHAR(200) NOT NULL UNIQUE -- this is actually a set of choices ('Fog', 'Rain', 'Snow', 'None')
   );
 ```
 
@@ -213,8 +220,9 @@ SELECT * FROM Precipitation;
 ```
 
 ## CREATE TABLE: Birdstrike To Flight Junction Table
+
 ```{sql connection=mydb}
-DROP TABLE IF EXISTS PrecipFlightJunction;
+DROP TABLE IF EXISTS PrecipToBirdStrike;
 ```
 
 ```{sql connection=mydb}
@@ -228,11 +236,9 @@ CREATE TABLE PrecipToBirdStrike(
 ```
 
 ```{sql connection=mydb}
-SELECT * FROM PrecipFlightJunction;
+SELECT * FROM PrecipToBirdStrike;
 ```
 
 ```{r}
 dbDisconnect(mydb)
 ```
-
-
