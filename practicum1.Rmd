@@ -240,6 +240,22 @@ birdStrike_df <- read.csv(file, header = TRUE, stringsAsFactors = FALSE, na.stri
 birdStrike_df[is.na(birdStrike_df)] <- 'UNKNOWN'
 ```
 
+## Load CSV File as DataFrame >> THIS IS A TEST TO PULL IN rownumber, which we could possibly use to link everything together
+```{r}
+## path <- "C:\Users\tolli\Downloads" # TODO: can update depending on who is uploading
+## Saved a copy of birdstrikes.csv to our git repo, so no need for path anymore
+file <- "BirdStrikesData.csv"
+
+## fileName <- paste(path, fn, sep = "/")
+
+birdStrike_df_TEST <- read.csv(file, header = TRUE, stringsAsFactors = FALSE, na.strings=c("", " "))
+birdStrike_df_TEST[is.na(birdStrike_df)] <- 'UNKNOWN'
+
+setDT(birdStrike_df_TEST, keep.rownames = TRUE)[]
+names(birdStrike_df_TEST)[names(birdStrike_df_TEST) == "rn"] <- "UniqueKey"
+head(birdStrike_df_TEST)
+```
+
 ```{r}
 head(birdStrike_df)
 ```
