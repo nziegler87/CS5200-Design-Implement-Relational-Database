@@ -176,7 +176,7 @@ DROP TABLE IF EXISTS Birdstrike;
 
 ```{sql connection=mydb}
 CREATE TABLE Birdstrike(
-  bs_id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  birdstrike_id INTEGER PRIMARY KEY AUTO_INCREMENT,
   flight_id INTEGER NOT NULL,
   number_struck_est ENUM('1', '2 to 10', '11 to 100', '100+', 'Unknown') NOT NULL,
   number_struck_actual INTEGER NOT NULL,
@@ -213,32 +213,14 @@ DROP TABLE IF EXISTS Precipitation;
 ```{sql connection=mydb}
 CREATE TABLE Precipitation(
   p_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  precip_name VARCHAR(200) NOT NULL UNIQUE -- this is actually a set of choices ('Fog', 'Rain', 'Snow', 'None')
+  precip_name ENUM('Fog', 'Rain', 'Snow', 'None') NOT NULL,
+  birdstrike_id INTEGER NOT NULL,
+  CONSTRAINT birdstrike_id_fk FOREIGN KEY (birdstrike_id) REFERENCES Birdstrike(birdstrike_id)
   );
 ```
 
 ```{sql connection=mydb}
 SELECT * FROM Precipitation;
-```
-
-## CREATE TABLE: Birdstrike To Flight Junction Table
-
-```{sql connection=mydb}
-DROP TABLE IF EXISTS PrecipToBirdStrike;
-```
-
-```{sql connection=mydb}
-CREATE TABLE PrecipToBirdStrike(
-  ptbs_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  precip_id INTEGER NOT NULL,
-  bs_id INTEGER NOT NULL,
-  CONSTRAINT bs_id_fk FOREIGN KEY (bs_id) REFERENCES BirdStrike(bs_id),
-  CONSTRAINT precip_id_fk FOREIGN KEY (precip_id) REFERENCES Precipitation(p_id)
-  );
-```
-
-```{sql connection=mydb}
-SELECT * FROM PrecipToBirdStrike;
 ```
 
 # Uploading the data
