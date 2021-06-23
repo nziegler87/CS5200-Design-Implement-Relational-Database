@@ -46,11 +46,13 @@ DROP TABLE IF EXISTS Aircraft;
 ```{sql connection=mydb}
 CREATE TABLE Aircraft(
   a_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  aircraft_name VARCHAR(200) NOT NULL,  -- TODO: do we need to enforce UNIQUE here? > not sure... can there be the same aircraft different # engines?
+  aircraft_name VARCHAR(200) NOT NULL,
   aircraft_type ENUM('aircraft', 'unknown') NOT NULL,
-  number_engines ENUM('1', '2', '3', '4', 'C', 'unknown') NOT NULL, -- TODO: we were going to correct C here, I think
+  number_engines ENUM('1', '2', '3', '4', 'unknown') NOT NULL, -- TODO: we were going to correct C here, I think
   large_aircraft ENUM('True', 'False', 'unknown') NOT NULL,
   );
+  
+-- assumption: we are assuming that each model for the airplane has only one engine configuration so we are correcting for it before uploading the table using a mean calculation. 
 ```
 
 ```{sql connection=mydb}
@@ -143,7 +145,7 @@ DROP TABLE IF EXISTS Wildlife;
 CREATE TABLE Wildlife(
   w_id INTEGER PRIMARY KEY AUTO_INCREMENT,
   species VARCHAR(200) NOT NULL UNIQUE,
-  size ENUM('Small', 'Medium', 'Large', 'Unknown') -- Do we include unknown? TODO: I believe I included it because there are blanks in the excel. 
+  size ENUM('Small', 'Medium', 'Large', 'unknown') 
   );
 ```
 
@@ -160,7 +162,7 @@ DROP TABLE IF EXISTS Note;
 ```{sql connection=mydb}
 CREATE TABLE Note(
   n_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  note TEXT NOT NULL       -- Should this be something other than VARCHAR(255)? > some of the text is > 259 bytes, so we can use TIMYTEXT/TINYBLOB or TEXT/BLOB- I vote TEXT.
+  note TEXT NOT NULL
   );
 ```
 
@@ -243,7 +245,6 @@ birdStrike_df[is.na(birdStrike_df)] <- 'UNKNOWN'
 birdStrike_df$'Aircraft:Type' <- as.factor(birdStrike_df$'Aircraft: Type')
 birdStrike_df$'Altitude bin' <- as.factor(birdStrike_df$'Altitude bin')
 birdStrike_df$'Wildlife: Number struck' <- as.factor(birdStrike_df$'Wildlife: Number struck')
-
 ```
 
 ```{r}
