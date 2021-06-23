@@ -20,11 +20,6 @@ mydb <- dbConnect(MySQL(), dbname = db_name, host = db_host, port = db_port,
 dbListTables(mydb)
 ```
 
-```{r}
-## Needed to make sqldf work...learned that when fiddling
-options(sqldf.driver = "SQLite")
-```
-
 ```{sql connection=mydb}
 -- Turns off foreign key check
 SET FOREIGN_KEY_CHECKS = 0;
@@ -228,13 +223,25 @@ SELECT * FROM Precipitation;
 # Uploading the data
 
 ```{r}
-path <- "C:\Users\tolli\Downloads" # TODO: can update depending on who is uploading
-fn <- "BirdStrikesData.csv"
+## Needed to make sqldf work...learned that when fiddling
+library(sqldf)
+options(sqldf.driver = "SQLite")
+```
 
-fileName <- paste(path, fn, sep = "/")
+## Load CSV File as DataFrame
+```{r}
+## path <- "C:\Users\tolli\Downloads" # TODO: can update depending on who is uploading
+## Saved a copy of birdstrikes.csv to our git repo, so no need for path anymore
+file <- "BirdStrikesData.csv"
 
-birdStrike_df <- read.csv(fileName, header = TRUE, stringsAsFactors = FALSE, na.strings=c("", " "))
+## fileName <- paste(path, fn, sep = "/")
+
+birdStrike_df <- read.csv(file, header = TRUE, stringsAsFactors = FALSE, na.strings=c("", " "))
 birdStrike_df[is.na(birdStrike_df)] <- 'UNKNOWN'
+```
+
+```{r}
+head(birdStrike_df)
 ```
 
 # Cleaning the data
@@ -246,6 +253,107 @@ birdStrike_df$'Aircraft:Type' <- as.factor(birdStrike_df$'Aircraft: Type')
 birdStrike_df$'Altitude bin' <- as.factor(birdStrike_df$'Altitude bin')
 birdStrike_df$'Wildlife: Number struck' <- as.factor(birdStrike_df$'Wildlife: Number struck')
 ```
+
+## PREPARE DATA: AirlineOperator
+```{r}
+AirlineOperatorTable <- sqldf('SELECT "Aircraft..Airline.Operator" AS arline_name FROM birdStrike_df')
+head(AirlineOperatorTable)
+```
+## PREPARE DATA: State
+```{r}
+# Retrieve Data
+StateTable <- sqldf('SELECT DISTINCT "Origin.State" AS state
+                                FROM birdStrike_df
+                            ORDER BY state')
+head(StateTable)
+```
+
+```{r}
+# Create Query and upload
+query <- sqlAppendTable(mydb, "State", StateData, row.names = FALSE)
+dbSendQuery(mydb, query)
+```
+## PREPARE DATA: Airport
+```{r}
+# Query State Data from Database
+stateDataFromDatabase <- dbGetQuery(mydb, "SELECT * FROM State;")
+
+# Join Query from Database with Query from birdStrike_df
+stateDataTemp <- sqldf('SELECT DISTINCT "Airport..Name" AS airport_name, s_id AS state
+                                   FROM csv
+                                        JOIN stateDataFromDatabase
+                                        ON "Origin.State" = state')
+
+# Use SQLDF to query only columns needed, labeled as needed
+airportData <- sqldf('SELECT DISTINCT airport_name, state
+                                 FROM stateDataTemp
+                             ORDER BY airport_name')
+```
+
+```{r}
+query <- sqlAppendTable(mydb, "Airport", airportData, row.names = FALSE)
+dbSendQuery(mydb, query)
+```
+
+## PREPARE DATA: Aircraft
+### Find Mode of number_engines for each aircraft
+```{r}
+# Query df to generate list of aircraft and numengines
+AircraftNumEnginesOnlyDF <- sqldf(' SELECT "Aircraft..Make.Model" AS Aircraft,
+                                           "Aircraft..Number.of.engines." AS NumEngines
+                                      FROM birdStrike_df
+                                  ORDER BY Aircraft')
+head(AircraftNumEnginesOnlyDF)
+```
+
+```{r}
+# Create summary table and then convert it back to dataframe
+AircraftNumEnginesOnlyTable <- table(AircraftNumEnginesOnlyDF)
+head(AircraftNumEnginesOnlyTable)
+```
+```{r}
+# Convert the table back to df
+AircraftNumEnginesOnlyDF2 <- as.data.frame.matrix(AircraftNumEnginesOnlyTable)
+head(AircraftNumEnginesOnlyDF2)
+```
+```{r}
+# Find the max values for each column and add as new column
+max_values <- colnames(AircraftNumEnginesOnlyDF2)[max.col(AircraftNumEnginesOnlyDF2, ties.method = "first")]
+AircraftNumEnginesOnlyDF2$most_common_engine <- max_values
+head(AircraftNumEnginesOnlyDF2)
+```
+```{r}
+# Add airplane name as column, not row identifier
+setDT(AircraftNumEnginesOnlyDF2, keep.rownames = TRUE)[]
+head(AircraftNumEnginesOnlyDF2)
+```
+```{r}
+# Query above table to retrieve needed format
+AircraftTableEnginesOnly <- sqldf('SELECT rn AS name, most_common_engine AS number_engines FROM AircraftNumEnginesOnlyDF2')
+head(AircraftTableEnginesOnly)
+```
+```{r}
+# Query dataframe to pull in large_aircraft attribute for each aircraft
+AircraftTableLargeAircraft <- sqldf('SELECT DISTINCT "Aircraft..Make.Model" AS name,
+                                                     "Aircraft..Type" AS aircraft_type,
+                                                     "Is.Aircraft.Large." AS large_aircraft
+                                                FROM birdStrike_df
+                                            GROUP BY name')
+head(AircraftTableLargeAircraft)
+```
+```{r}
+# Union df that has engine setup with df that has aircraft_type and large_aircraft
+AircraftTable <- sqldf('  SELECT rest.name, 
+                                 rest.aircraft_type,
+                                 engines.number_engines,
+                                 rest.large_aircraft
+                           FROM  AircraftTableLargeAircraft AS rest
+                                 JOIN AircraftTableEnginesOnly AS engines
+                                 ON rest.name = engines.name
+                        ORDER BY rest.name')
+head(AircraftTable)
+```
+
 
 ```{r}
 dbDisconnect(mydb)
