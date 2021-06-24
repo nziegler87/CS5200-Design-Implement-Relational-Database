@@ -229,6 +229,7 @@ options(sqldf.driver = "SQLite")
 ```
 
 ## Load CSV File as DataFrame
+
 ```{r}
 ## Saved a copy of birdstrikes.csv to our git repo
 file <- "BirdStrikesData.csv"
@@ -272,16 +273,16 @@ birdStrike_df$'Altitude bin' <- as.factor(birdStrike_df$'Altitude bin')
 birdStrike_df$'Wildlife: Number struck' <- as.factor(birdStrike_df$'Wildlife: Number struck')
 birdStrike_df$'Effect: Impact to flight' <- as.factor(birdStrike_df$'Effect: Impact to flight')
 birdStrike_df$'Effect: Indicated Damage' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
-birdStrike_df$'When: Phase of flight' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
-birdStrike_df$'Remains of wildlife collected' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
-birdStrike_df$'Remains of wildlife send to Smithsonian' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
-birdStrike_df$'Pilot warned of birds or wildlife' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
+birdStrike_df$'When: Phase of flight' <- as.factor(birdStrike_df$'When: Phase of flight')
+birdStrike_df$'Remains of wildlife collected' <- as.factor(birdStrike_df$'Remains of wildlife collected')
+birdStrike_df$'Remains of wildlife send to Smithsonian' <- as.factor(birdStrike_df$'Remains of wildlife send to Smithsonian')
+birdStrike_df$'Pilot warned of birds or wildlife' <- as.factor(birdStrike_df$'Pilot warned of birds or wildlife')
 
 # Precipitation table
-birdStrike_df$'Conditions: Precipitation' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
+birdStrike_df$'Conditions: Precipitation' <- as.factor(birdStrike_df$'Conditions: Precipitation')
 
 # Wildlife table
-birdStrike_df$'Wildlife: Size' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
+birdStrike_df$'Wildlife: Size' <- as.factor(birdStrike_df$'Wildlife: Size')
 
 ```
 
@@ -339,7 +340,8 @@ dbSendQuery(mydb, query)
 ```
 
 ## PREPARE DATA: Aircraft
-### Find Mode of number_engines for each aircraft
+
+Below we are finding the Mode of number_engines for each aircraft:
 
 ```{r}
 # Query df to generate list of aircraft and numengines
