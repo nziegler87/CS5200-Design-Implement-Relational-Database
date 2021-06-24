@@ -240,6 +240,7 @@ birdStrike_df[is.na(birdStrike_df)] <- 'UNKNOWN'
 ```
 
 ## Load CSV File as DataFrame >> THIS IS A TEST TO PULL IN rownumber, which we could possibly use to link everything together
+
 ```{r}
 ## Saved a copy of birdstrikes.csv to our git repo
 file <- "BirdStrikesData.csv"
