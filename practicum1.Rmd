@@ -41,7 +41,7 @@ DROP TABLE IF EXISTS Aircraft;
 ```{sql connection=mydb}
 CREATE TABLE Aircraft(
   a_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  aircraft_name VARCHAR(200) NOT NULL,
+  aircraft_name VARCHAR(255) NOT NULL,
   aircraft_type ENUM('aircraft', 'unknown') NOT NULL,
   number_engines ENUM('1', '2', '3', '4', 'unknown') NOT NULL, -- TODO: we were going to correct C here, I think
   large_aircraft ENUM('True', 'False', 'unknown') NOT NULL,
@@ -63,7 +63,7 @@ DROP TABLE IF EXISTS State;
 ```{sql connection=mydb}
 CREATE TABLE State(
   s_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  state VARCHAR(200) NOT NULL UNIQUE
+  state VARCHAR(255) NOT NULL UNIQUE
   );
 ```
 
@@ -80,7 +80,7 @@ DROP TABLE IF EXISTS Airport;
 ```{sql connection=mydb}
 CREATE TABLE Airport(
   a_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  airport_name VARCHAR(200) NOT NULL,
+  airport_name VARCHAR(255) NOT NULL,
   state INTEGER NOT NULL,
   CONSTRAINT state_fk FOREIGN KEY (state) REFERENCES State(s_id)
   );
@@ -99,7 +99,7 @@ DROP TABLE IF EXISTS AirlineOperator;
 ```{sql connection=mydb}
 CREATE TABLE AirlineOperator(
   ao_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  airline_name VARCHAR(200) NOT NULL UNIQUE
+  airline_name VARCHAR(255) NOT NULL UNIQUE
   );
 ```
 
@@ -139,7 +139,7 @@ DROP TABLE IF EXISTS Wildlife;
 ```{sql connection=mydb}
 CREATE TABLE Wildlife(
   w_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  species VARCHAR(200) NOT NULL UNIQUE,
+  species VARCHAR(255) NOT NULL UNIQUE,
   size ENUM('Small', 'Medium', 'Large', 'unknown') 
   );
 ```
@@ -230,28 +230,23 @@ options(sqldf.driver = "SQLite")
 
 ## Load CSV File as DataFrame
 ```{r}
-## path <- "C:\Users\tolli\Downloads" # TODO: can update depending on who is uploading
-## Saved a copy of birdstrikes.csv to our git repo, so no need for path anymore
+## Saved a copy of birdstrikes.csv to our git repo
 file <- "BirdStrikesData.csv"
 
-## fileName <- paste(path, fn, sep = "/")
-
+# to remove the blanks and update with UNKNOWN
 birdStrike_df <- read.csv(file, header = TRUE, stringsAsFactors = FALSE, na.strings=c("", " "))
 birdStrike_df[is.na(birdStrike_df)] <- 'UNKNOWN'
 ```
 
 ## Load CSV File as DataFrame >> THIS IS A TEST TO PULL IN rownumber, which we could possibly use to link everything together
 ```{r}
-## path <- "C:\Users\tolli\Downloads" # TODO: can update depending on who is uploading
-## Saved a copy of birdstrikes.csv to our git repo, so no need for path anymore
+## Saved a copy of birdstrikes.csv to our git repo
 file <- "BirdStrikesData.csv"
-
-## fileName <- paste(path, fn, sep = "/")
 
 birdStrike_df_TEST <- read.csv(file, header = TRUE, stringsAsFactors = FALSE, na.strings=c("", " "))
 birdStrike_df_TEST[is.na(birdStrike_df)] <- 'UNKNOWN'
 
-setDT(birdStrike_df_TEST, keep.rownames = TRUE)[]
+setDT(birdStrike_df_TEST, keep.rownames = TRUE)[] # this isn't working on my machine for some reason
 names(birdStrike_df_TEST)[names(birdStrike_df_TEST) == "rn"] <- "UniqueKey"
 head(birdStrike_df_TEST)
 ```
@@ -265,59 +260,92 @@ head(birdStrike_df)
 ## Making factors
 
 ```{r}
-birdStrike_df$'Aircraft:Type' <- as.factor(birdStrike_df$'Aircraft: Type')
+## TODO: is this even something we want to use? Would a condition in the create table be better?
+
+# aircraft table
+birdStrike_df$'Aircraft: Type' <- as.factor(birdStrike_df$'Aircraft: Type')
+birdStrike_df$'Aircraft: Number of engines' <- as.factor(birdStrike_df$'Aircraft: Number of engines')
+birdStrike_df$'Is Aircraft Large?' <- as.factor(birdStrike_df$'Is Aircraft Large?')
+
+# BirdStrike table
 birdStrike_df$'Altitude bin' <- as.factor(birdStrike_df$'Altitude bin')
 birdStrike_df$'Wildlife: Number struck' <- as.factor(birdStrike_df$'Wildlife: Number struck')
+birdStrike_df$'Effect: Impact to flight' <- as.factor(birdStrike_df$'Effect: Impact to flight')
+birdStrike_df$'Effect: Indicated Damage' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
+birdStrike_df$'When: Phase of flight' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
+birdStrike_df$'Remains of wildlife collected' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
+birdStrike_df$'Remains of wildlife send to Smithsonian' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
+birdStrike_df$'Pilot warned of birds or wildlife' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
+
+# Precipitation table
+birdStrike_df$'Conditions: Precipitation' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
+
+# Wildlife table
+birdStrike_df$'Wildlife: Size' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
+
 ```
 
 ## PREPARE DATA: AirlineOperator
+
 ```{r}
-AirlineOperatorTable <- sqldf('SELECT "Aircraft..Airline.Operator" AS arline_name FROM birdStrike_df')
+AirlineOperatorTable <- sqldf('SELECT "Aircraft..Airline.Operator" AS airline_name 
+                               FROM birdStrike_df')
 head(AirlineOperatorTable)
 ```
+
 ## PREPARE DATA: State
+
 ```{r}
 # Retrieve Data
 StateTable <- sqldf('SELECT DISTINCT "Origin.State" AS state
-                                FROM birdStrike_df
-                            ORDER BY state')
+                     FROM birdStrike_df
+                     ORDER BY state')
 head(StateTable)
 ```
 
 ```{r}
-# Create Query and upload
-query <- sqlAppendTable(mydb, "State", StateData, row.names = FALSE)
+# Create query and upload
+query <- sqlAppendTable(mydb, "State", StateData, row.names = FALSE) #TODO: should that be StateTable?
+# can we consolidate these two above?
 dbSendQuery(mydb, query)
 ```
+
 ## PREPARE DATA: Airport
+
 ```{r}
 # Query State Data from Database
 stateDataFromDatabase <- dbGetQuery(mydb, "SELECT * FROM State;")
 
-# Join Query from Database with Query from birdStrike_df
-stateDataTemp <- sqldf('SELECT DISTINCT "Airport..Name" AS airport_name, s_id AS state
-                                   FROM csv
-                                        JOIN stateDataFromDatabase
-                                        ON "Origin.State" = state')
+# Join query from Database with query from birdStrike_df
+stateDataTemp <- sqldf('SELECT DISTINCT "Airport..Name" AS airport_name
+                       , s_id AS state_id
+                       FROM csv
+                       JOIN stateDataFromDatabase
+                       ON "Origin.State" = state')
 
 # Use SQLDF to query only columns needed, labeled as needed
-airportData <- sqldf('SELECT DISTINCT airport_name, state
-                                 FROM stateDataTemp
-                             ORDER BY airport_name')
+airportData <- sqldf('SELECT DISTINCT airport_name
+                     , state
+                     FROM stateDataTemp
+                     ORDER BY airport_name')
+
+# I feel like for all of these we can remove the temp table state. Can we test out together?
 ```
 
 ```{r}
+# TODO: this is not really important for anything, but could we put these chunks together?
 query <- sqlAppendTable(mydb, "Airport", airportData, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
 
 ## PREPARE DATA: Aircraft
 ### Find Mode of number_engines for each aircraft
+
 ```{r}
 # Query df to generate list of aircraft and numengines
-AircraftNumEnginesOnlyDF <- sqldf(' SELECT "Aircraft..Make.Model" AS Aircraft,
-                                           "Aircraft..Number.of.engines." AS NumEngines
-                                      FROM birdStrike_df
+AircraftNumEnginesOnlyDF <- sqldf('SELECT "Aircraft..Make.Model" AS Aircraft,
+                                  "Aircraft..Number.of.engines." AS NumEngines
+                                  FROM birdStrike_df
                                   ORDER BY Aircraft')
 head(AircraftNumEnginesOnlyDF)
 ```
@@ -327,49 +355,146 @@ head(AircraftNumEnginesOnlyDF)
 AircraftNumEnginesOnlyTable <- table(AircraftNumEnginesOnlyDF)
 head(AircraftNumEnginesOnlyTable)
 ```
+
 ```{r}
 # Convert the table back to df
 AircraftNumEnginesOnlyDF2 <- as.data.frame.matrix(AircraftNumEnginesOnlyTable)
 head(AircraftNumEnginesOnlyDF2)
 ```
+
 ```{r}
 # Find the max values for each column and add as new column
 max_values <- colnames(AircraftNumEnginesOnlyDF2)[max.col(AircraftNumEnginesOnlyDF2, ties.method = "first")]
 AircraftNumEnginesOnlyDF2$most_common_engine <- max_values
 head(AircraftNumEnginesOnlyDF2)
 ```
+
 ```{r}
 # Add airplane name as column, not row identifier
 setDT(AircraftNumEnginesOnlyDF2, keep.rownames = TRUE)[]
 head(AircraftNumEnginesOnlyDF2)
 ```
+
 ```{r}
 # Query above table to retrieve needed format
-AircraftTableEnginesOnly <- sqldf('SELECT rn AS name, most_common_engine AS number_engines FROM AircraftNumEnginesOnlyDF2')
+AircraftTableEnginesOnly <- sqldf('SELECT rn AS name
+                                  , most_common_engine AS number_engines 
+                                  FROM AircraftNumEnginesOnlyDF2')
 head(AircraftTableEnginesOnly)
 ```
+
 ```{r}
 # Query dataframe to pull in large_aircraft attribute for each aircraft
 AircraftTableLargeAircraft <- sqldf('SELECT DISTINCT "Aircraft..Make.Model" AS name,
-                                                     "Aircraft..Type" AS aircraft_type,
-                                                     "Is.Aircraft.Large." AS large_aircraft
-                                                FROM birdStrike_df
-                                            GROUP BY name')
+                                    "Aircraft..Type" AS aircraft_type,
+                                    "Is.Aircraft.Large." AS large_aircraft
+                                    FROM birdStrike_df
+                                    GROUP BY name')
 head(AircraftTableLargeAircraft)
 ```
+
 ```{r}
 # Union df that has engine setup with df that has aircraft_type and large_aircraft
-AircraftTable <- sqldf('  SELECT rest.name, 
-                                 rest.aircraft_type,
-                                 engines.number_engines,
-                                 rest.large_aircraft
-                           FROM  AircraftTableLargeAircraft AS rest
-                                 JOIN AircraftTableEnginesOnly AS engines
-                                 ON rest.name = engines.name
-                        ORDER BY rest.name')
+AircraftTable <- sqldf('SELECT rest.name
+                       , rest.aircraft_type
+                       , engines.number_engines
+                       , rest.large_aircraft
+                       FROM AircraftTableLargeAircraft AS rest
+                       JOIN AircraftTableEnginesOnly AS engines
+                       ON rest.name = engines.name
+                       ORDER BY rest.name')
 head(AircraftTable)
 ```
 
+```{r}
+# TODO: this is not really important for anything, but could we put these chunks together?
+query <- sqlAppendTable(mydb, "Aircraft", AircraftTable, row.names = FALSE)
+dbSendQuery(mydb, query)
+```
+
+## PREPARE DATA: Note
+
+```{r}
+NoteData <- sqldf('SELECT DISTINCT "Remarks" AS note
+                       FROM birdStrike_df')
+
+
+# I feel like for all of these we can remove the temp table state. Can we test out together?
+```
+
+```{r}
+# TODO: this is not really important for anything, but could we put these chunks together?
+query <- sqlAppendTable(mydb, "Note", NoteData, row.names = FALSE)
+dbSendQuery(mydb, query)
+```
+
+## PREPARE DATA: Wildlife
+
+```{r}
+WildlifeData <- sqldf('SELECT DISTINCT "Wildlife..Species" AS species
+                  , "Wildlife..Size" as size
+                  FROM birdStrike_df')
+
+
+# I feel like for all of these we can remove the temp table state. Can we test out together?
+```
+
+```{r}
+# TODO: this is not really important for anything, but could we put these chunks together?
+query <- sqlAppendTable(mydb, "Note", WildlifeData, row.names = FALSE)
+dbSendQuery(mydb, query)
+```
+
+## Practicum Questions
+
+4. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents for each airline upon take-off or climb. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
+
+```{sql connection=mydb}
+SELECT SUM(BirdStrike.birdstrike_id) as incidents
+, airline_operator
+FROM BirdStrike
+JOIN Flight
+ON BirdStrike.flight_id = Flight.f_id
+WHERE phase_of_flight = ('Take-off run' OR 'Climb')
+GROUP BY airline_operator
+```
+
+5. (10 pts / 1 hr) Create a SQL query against your database to find the airports that had the most bird strike incidents (during any flight phase). Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
+
+```{sql connection=mydb}
+SELECT TOP 10 SUM(BirdStrike.birdstrike_id) as incidents
+, origin_airport
+FROM BirdStrike
+JOIN Flight
+ON BirdStrike.flight_id = Flight.f_id
+GROUP BY origin_airport
+ORDER BY incidents desc
+```
+
+6. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents by year. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
+
+```{sql connection=mydb}
+SELECT SUM(BirdStrike.birdstrike_id) as incidents
+, YEAR(Flight.flight_date) as Year
+FROM BirdStrike
+JOIN Flight
+ON BirdStrike.flight_id = Flight.f_id
+GROUP BY YEAR(Flight.flight_date)
+```
+
+7. (10 pts / 3 hrs) Using the above data, build a column chart that visualizes the number of bird strikes incidents per year from 2008 to 2011 during take-off/climbing and during descent/approach/landing. Adorn the graph with appropriate axis labels.
+
+```{sql connection=mydb}
+
+```
+
+8. (10 pts / 3 hrs) Create a stored procedure in MySQL (note that if you used SQLite, then you cannot complete this step) that removes a bird strike incident from the database. You may decide what you need to pass to the stored procedure to remove a bird strike incident, e.g., departure airport, airlines, or some ID. Show that the deletion worked as expected.
+
+```{sql connection=mydb}
+
+```
+
+## Disconnect 
 
 ```{r}
 dbDisconnect(mydb)
