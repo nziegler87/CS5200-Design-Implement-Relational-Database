@@ -122,7 +122,7 @@ CREATE TABLE Flight(
   airline_operator INTEGER NOT NULL,
   CONSTRAINT aircraft_id_fk FOREIGN KEY (aircraft_id) REFERENCES Aircraft(a_id),
   CONSTRAINT origin_airport_fk FOREIGN KEY (origin_airport) REFERENCES Airport(a_id),
-  CONSTRAINT airline_operator_fk FOREIGN KEY (airline_operator) REFERENCES AirlineOperator(ao_id),
+  CONSTRAINT airline_operator_fk FOREIGN KEY (airline_operator) REFERENCES AirlineOperator(ao_id)
   );
 ```
 
@@ -225,6 +225,9 @@ SELECT * FROM Precipitation;
 ```{r}
 ## Needed to make sqldf work...learned that when fiddling
 library(sqldf)
+library(lubridate)
+library(dplyr)
+library(data.table)
 options(sqldf.driver = "SQLite")
 ```
 
@@ -242,6 +245,22 @@ setDT(birdStrike_df, keep.rownames = TRUE)[] # this isn't working on my machine 
 names(birdStrike_df)[names(birdStrike_df) == "rn"] <- "UniqueKey"
 head(birdStrike_df)
 ```
+```{r}
+for (row in 1:2){
+  date_time_string <- substr(birdStrike_df[row, "FlightDate"], 0, 12)
+  print(date_time_string)
+  date_time_parsed <- parse_date_time(date_time_string, orders = c("mdyHMS"))
+  print(date_time_parsed)
+  # birdStrike_df[row, "parsed_date"] <- date_time_parsed
+}
+
+```
+
+```{r}
+birdStrike_df$parsed_date <- parse_date_time(birdStrike_df$FlightDate, orders = c("mdyHMS"))
+birdStrike_df
+```
+
 
 ## Load CSV File as DataFrame >> THIS IS A TEST TO PULL IN rownumber, which we could possibly use to link everything together
 
@@ -427,15 +446,32 @@ dbSendQuery(mydb, query)
 ```
 
 ## PREPARE DATA: Flight
-```{sql connection=mydb}
-AircraftFromAWS 
-```
 
 
 ```{r}
-
+AircraftFromAWS <- dbGetQuery(mydb, "SELECT * FROM Aircraft;")
+AirportFromAWS <- dbGetQuery(mydb, "SELECT * FROM Airport;")
+AirlineOperatorFromAWS <- dbGetQuery(mydb, "SELECT * FROM AirlineOperator;")
 ```
 
+```{r}
+FlightTable <- sqldf('SELECT "UniqueKey" as f_id, CAST (CAST ("FlightDate" AS VARCHAR) AS DATETIME) AS flight_date
+                             , aircraft.a_id AS aircraft_id, airport.a_id AS origin_airport
+                             , airline_operator.ao_id AS airline_operator
+                      FROM birdStrike_df
+                           JOIN AircraftFromAWS AS aircraft
+                           ON "Aircraft..Make.Model" = aircraft.aircraft_name
+                           JOIN AirportFromAWS AS airport
+                           ON "Airport..Name" = airport.airport_name
+                           JOIN AirlineOperatorFromAWS AS airline_operator
+                           ON "Aircraft..Airline.Operator" = airline_operator.airline_name')
+FlightTable
+```
+```{r}
+# TODO: this is not really important for anything, but could we put these chunks together?
+query <- sqlAppendTable(mydb, "Flight", FlightTable, row.names = FALSE)
+dbSendQuery(mydb, query)
+```
 
 ## PREPARE DATA: Note
 
