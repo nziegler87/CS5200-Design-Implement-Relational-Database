@@ -241,10 +241,11 @@ file <- "BirdStrikesData.csv"
 birdStrike_df <- read.csv(file, header = TRUE, stringsAsFactors = FALSE, na.strings=c("", " "))
 birdStrike_df[is.na(birdStrike_df)] <- 'UNKNOWN'
 
-setDT(birdStrike_df, keep.rownames = TRUE)[] # this isn't working on my machine for some reason
+setDT(birdStrike_df, keep.rownames = TRUE)[] 
 names(birdStrike_df)[names(birdStrike_df) == "rn"] <- "UniqueKey"
 head(birdStrike_df)
 ```
+
 ```{r}
 # If needed, this is used to drop the parsed_date column
 birdStrike_df = subset(birdStrike_df, select = -c(parsed_date) )
@@ -254,26 +255,24 @@ birdStrike_df = subset(birdStrike_df, select = -c(parsed_date) )
 # If value was uploaded as UNKNOWN, set the date to 1/1/1776. Otherwise, parse the date as is
 for (row in 1:nrow(birdStrike_df)){
   date_time_string <- unlist(birdStrike_df[row, "FlightDate"])
-  if ( date_time_string == "UNKNOWN"){
+  if (date_time_string == "UNKNOWN"){
     date_time_parsed <- as.POSIXct("1/1/1776 0:00", format="%m/%d/%Y %H:%M")
   } else {
-
     date_time_parsed <- as.POSIXct(date_time_string, format="%m/%d/%Y %H:%M")
-    }
-
+  }
   birdStrike_df[row, "parsed_date"] <- date_time_parsed
 }
 ```
 
 ```{r}
-sqldf('SELECT "FlightDate", "parsed_date" FROM birdStrike_df')
+sqldf('SELECT "FlightDate"
+      , "parsed_date" 
+      FROM birdStrike_df')
 ```
 
 ```{r}
 birdStrike_df
 ```
-
-
 
 ## Load CSV File as DataFrame >> THIS IS A TEST TO PULL IN rownumber, which we could possibly use to link everything together
 
@@ -284,7 +283,7 @@ file <- "BirdStrikesData.csv"
 birdStrike_df_TEST <- read.csv(file, header = TRUE, stringsAsFactors = FALSE, na.strings=c("", " "))
 birdStrike_df_TEST[is.na(birdStrike_df)] <- 'UNKNOWN'
 
-setDT(birdStrike_df_TEST, keep.rownames = TRUE)[] # this isn't working on my machine for some reason
+setDT(birdStrike_df_TEST, keep.rownames = TRUE)[]
 names(birdStrike_df_TEST)[names(birdStrike_df_TEST) == "rn"] <- "UniqueKey"
 head(birdStrike_df_TEST)
 ```
@@ -298,7 +297,7 @@ head(birdStrike_df)
 ## Making factors
 
 ```{r}
-## TODO: is this even something we want to use? Would a condition in the create table be better?
+## TODO: is this even something we want to use?
 
 # aircraft table
 birdStrike_df$'Aircraft: Type' <- as.factor(birdStrike_df$'Aircraft: Type')
@@ -460,7 +459,6 @@ dbSendQuery(mydb, query)
 
 ## PREPARE DATA: Flight
 
-
 ```{r}
 AircraftFromAWS <- dbGetQuery(mydb, "SELECT * FROM Aircraft;")
 AirportFromAWS <- dbGetQuery(mydb, "SELECT * FROM Airport;")
@@ -468,18 +466,21 @@ AirlineOperatorFromAWS <- dbGetQuery(mydb, "SELECT * FROM AirlineOperator;")
 ```
 
 ```{r}
-FlightTable <- sqldf('SELECT "UniqueKey" as f_id, "parsed_date" AS flight_date
-                             , aircraft.a_id AS aircraft_id, airport.a_id AS origin_airport
-                             , airline_operator.ao_id AS airline_operator
-                      FROM birdStrike_df
-                           JOIN AircraftFromAWS AS aircraft
-                           ON "Aircraft..Make.Model" = aircraft.aircraft_name
-                           JOIN AirportFromAWS AS airport
-                           ON "Airport..Name" = airport.airport_name
-                           JOIN AirlineOperatorFromAWS AS airline_operator
-                           ON "Aircraft..Airline.Operator" = airline_operator.airline_name')
+FlightTable <- sqldf('SELECT "UniqueKey"as f_id
+                     , "parsed_date" AS flight_date
+                     , aircraft.a_id AS aircraft_id
+                     , airport.a_id AS origin_airport
+                     , airline_operator.ao_id AS airline_operator
+                     FROM birdStrike_df
+                     JOIN AircraftFromAWS AS aircraft
+                     ON "Aircraft..Make.Model" = aircraft.aircraft_name
+                     JOIN AirportFromAWS AS airport
+                     ON "Airport..Name" = airport.airport_name
+                     JOIN AirlineOperatorFromAWS AS airline_operator
+                     ON "Aircraft..Airline.Operator" = airline_operator.airline_name')
 FlightTable
 ```
+
 ```{r}
 # TODO: this is not really important for anything, but could we put these chunks together?
 query <- sqlAppendTable(mydb, "Flight", FlightTable, row.names = FALSE)
@@ -505,6 +506,11 @@ dbSendQuery(mydb, query)
 ## PREPARE DATA: Wildlife
 
 ```{r}
+
+# I think we need to make this change in the df, not in SQL before it's uploaded
+# Same with the other bits like Y/N -> TRUE/FALSE, all that should happen at same time
+# as parse_date function
+
 WildlifeTable <- sqldf('SELECT DISTINCT * FROM (SELECT
                   CASE
                     WHEN "Wildlife..Species" LIKE "%Unknown%" THEN "UNKNOWN"
@@ -518,6 +524,78 @@ count(WildlifeTable)
 ```{r}
 # TODO: this is not really important for anything, but could we put these chunks together?
 query <- sqlAppendTable(mydb, "Wildlife", WildlifeTable, row.names = FALSE)
+dbSendQuery(mydb, query)
+```
+
+## PREPARE DATA: BirdStrike
+
+```{r}
+FlightFromAWS <- dbGetQuery(mydb, "SELECT * FROM Flight;")
+NoteFromAWS <- dbGetQuery(mydb, "SELECT * FROM Note;")
+WildlifeFromAWS <- dbGetQuery(mydb, "SELECT * FROM Wildlife;")
+```
+
+```{r}
+birdStrike_df
+```
+
+```{r}
+# TODO: confirm that "Record..ID" is right
+BirdStrikeTable <- sqldf('SELECT "Record..ID"as birdstrike_id
+                         , flight.f_id AS flight_id
+                         , "Wildlife..Number.struck" as number_struck_est
+                         , "Wildlife..Number.Struck.Actual" as number_struck_actual
+                         , "When..Phase.of.flight" as phase_of_flight
+                         , "Altitude.bin" as altitude_bin
+                         , "Effect..Impact.to.flight" as impact_to_flight
+                         , "Effect..Indicated.Damage" as indicated_damage
+                         , "Remains.of.wilflife.collected." as wildlife_remains_collected
+                         , "Remains.of.wildlife.sent.to.Smithsonian" as wildlife_remains_smithsonian
+                         , "Wildlife..Size" as wildlife_size
+                         , note.n_id as note_id
+                         , wildlife.w_id as wildlife_id
+                         , "Pilot.warned.of.birds.or.wildlife." as pilot_warned
+                         , "Cost..Total.." as total_cost
+                         , "Feet.above.ground" as feet_above_ground
+                         , "Number.of.people.injured" as num_people_injured
+                         , "Conditions..Sky" as sky_conditions
+                         FROM birdStrike_df
+                         
+                         -- I havent fully thought this join through...
+                         -- we adjusted for the wildlife unknowns so match on what?
+                         -- I think the ID is the same as the uniquekey...
+                         JOIN FlightFromAWS AS flight
+                         ON "UniqueKey" = flight.f_id
+                         JOIN NoteFromAWS AS note
+                         ON "UniqueKey = note.n_id
+                         JOIN WildlifeFromAWS AS wildlife
+                         ON "UniqueKey" = wildlife.w_id')
+BirdStrikeTable
+```
+
+```{r}
+# TODO: this is not really important for anything, but could we put these chunks together?
+query <- sqlAppendTable(mydb, "BirdStrike", BirdStrikeTable, row.names = FALSE)
+dbSendQuery(mydb, query)
+```
+
+## PREPARE DATA: Precipitation
+
+```{r}
+
+# Younis actually learned how to parse strings with ',' delim yesterday into 
+# select distinct.. i'll ask how to do
+
+PrecipTable <- sqldf('SELECT DISTINCT  FROM 
+                  FROM birdStrike_df)')
+count(PrecipTable)
+
+# I feel like for all of these we can remove the temp table state. Can we test out together?
+```
+
+```{r}
+# TODO: this is not really important for anything, but could we put these chunks together?
+query <- sqlAppendTable(mydb, "Precipitation", PrecipTable, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
 
