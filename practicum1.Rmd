@@ -246,20 +246,29 @@ names(birdStrike_df)[names(birdStrike_df) == "rn"] <- "UniqueKey"
 head(birdStrike_df)
 ```
 ```{r}
-for (row in 1:2){
-  date_time_string <- substr(birdStrike_df[row, "FlightDate"], 0, 12)
-  print(date_time_string)
-  date_time_parsed <- parse_date_time(date_time_string, orders = c("mdyHMS"))
-  print(date_time_parsed)
-  # birdStrike_df[row, "parsed_date"] <- date_time_parsed
-}
-
+# If needed, this is used to drop the parsed_date column
+birdStrike_df = subset(birdStrike_df, select = -c(parsed_date) )
 ```
 
 ```{r}
-birdStrike_df$parsed_date <- parse_date_time(birdStrike_df$FlightDate, orders = c("mdyHMS"))
-birdStrike_df
+# If value was uploaded as UNKNOWN, set the date to 1/1/1776. Otherwise, parse the date as is
+for (row in 1:nrow(birdStrike_df)){
+  date_time_string <- unlist(birdStrike_df[row, "FlightDate"])
+  if ( date_time_string == "UNKNOWN"){
+    date_time_parsed <- as.POSIXct("1/1/1776 0:00", format="%m/%d/%Y %H:%M")
+  } else {
+
+    date_time_parsed <- as.POSIXct(date_time_string, format="%m/%d/%Y %H:%M")
+    }
+
+  birdStrike_df[row, "parsed_date"] <- date_time_parsed
+}
 ```
+
+```{r}
+sqldf('SELECT "FlightDate", "parsed_date" FROM birdStrike_df')
+```
+
 
 
 ## Load CSV File as DataFrame >> THIS IS A TEST TO PULL IN rownumber, which we could possibly use to link everything together
@@ -455,7 +464,7 @@ AirlineOperatorFromAWS <- dbGetQuery(mydb, "SELECT * FROM AirlineOperator;")
 ```
 
 ```{r}
-FlightTable <- sqldf('SELECT "UniqueKey" as f_id, CAST (CAST ("FlightDate" AS VARCHAR) AS DATETIME) AS flight_date
+FlightTable <- sqldf('SELECT "UniqueKey" as f_id, "parsed_date" AS flight_date
                              , aircraft.a_id AS aircraft_id, airport.a_id AS origin_airport
                              , airline_operator.ao_id AS airline_operator
                       FROM birdStrike_df
@@ -556,6 +565,11 @@ GROUP BY YEAR(Flight.flight_date)
 ```{sql connection=mydb}
 
 ```
+
+```{r}
+saveRDS(birdStrike_df, file = "my_data.rds")
+```
+
 
 ## Disconnect 
 
