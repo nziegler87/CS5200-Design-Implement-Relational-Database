@@ -42,9 +42,9 @@ DROP TABLE IF EXISTS Aircraft;
 CREATE TABLE Aircraft(
   a_id INTEGER PRIMARY KEY AUTO_INCREMENT,
   aircraft_name VARCHAR(255) NOT NULL,
-  aircraft_type ENUM('aircraft', 'unknown') NOT NULL,
-  number_engines ENUM('1', '2', '3', '4', 'unknown') NOT NULL, -- TODO: we were going to correct C here, I think
-  large_aircraft ENUM('True', 'False', 'unknown') NOT NULL,
+  aircraft_type ENUM('airplane', 'UNKNOWN') NOT NULL,
+  number_engines ENUM('1', '2', '3', '4', 'UNKNOWN') NOT NULL, -- TODO: we were going to correct C here, I think
+  large_aircraft ENUM('Yes', 'No', 'UNKNOWN') NOT NULL
   );
   
 -- assumption: we are assuming that each model for the airplane has only one engine configuration so we are correcting for it before uploading the table using a mean calculation. 
@@ -139,8 +139,7 @@ DROP TABLE IF EXISTS Wildlife;
 ```{sql connection=mydb}
 CREATE TABLE Wildlife(
   w_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  species VARCHAR(255) NOT NULL UNIQUE,
-  size ENUM('Small', 'Medium', 'Large', 'unknown') 
+  species VARCHAR(255) NOT NULL UNIQUE
   );
 ```
 
@@ -187,6 +186,7 @@ CREATE TABLE Birdstrike(
   wildlife_remains_smithsonian BOOLEAN NOT NULL,
   note_id INTEGER,
   wildlife_id INTEGER NOT NULL,
+  wildlife_size ENUM('Small', 'Medium', 'Large', 'unknown') NOT NULL,
   pilot_warned ENUM('True', 'False', 'Unknown') NOT NULL,
   total_cost INTEGER NOT NULL,
   feet_above_ground INTEGER NOT NULL,
@@ -237,6 +237,10 @@ file <- "BirdStrikesData.csv"
 # to remove the blanks and update with UNKNOWN
 birdStrike_df <- read.csv(file, header = TRUE, stringsAsFactors = FALSE, na.strings=c("", " "))
 birdStrike_df[is.na(birdStrike_df)] <- 'UNKNOWN'
+
+setDT(birdStrike_df, keep.rownames = TRUE)[] # this isn't working on my machine for some reason
+names(birdStrike_df)[names(birdStrike_df) == "rn"] <- "UniqueKey"
+head(birdStrike_df)
 ```
 
 ## Load CSV File as DataFrame >> THIS IS A TEST TO PULL IN rownumber, which we could possibly use to link everything together
@@ -290,9 +294,16 @@ birdStrike_df$'Wildlife: Size' <- as.factor(birdStrike_df$'Wildlife: Size')
 ## PREPARE DATA: AirlineOperator
 
 ```{r}
-AirlineOperatorTable <- sqldf('SELECT "Aircraft..Airline.Operator" AS airline_name 
-                               FROM birdStrike_df')
+AirlineOperatorTable <- sqldf('SELECT DISTINCT "Aircraft..Airline.Operator" AS airline_name 
+                               FROM birdStrike_df
+                               ORDER BY airline_name')
 head(AirlineOperatorTable)
+```
+```{r}
+# Create query and upload
+query <- sqlAppendTable(mydb, "AirlineOperator", AirlineOperatorTable, row.names = FALSE)
+# can we consolidate these two above?
+dbSendQuery(mydb, query)
 ```
 
 ## PREPARE DATA: State
@@ -307,7 +318,7 @@ head(StateTable)
 
 ```{r}
 # Create query and upload
-query <- sqlAppendTable(mydb, "State", StateData, row.names = FALSE) #TODO: should that be StateTable?
+query <- sqlAppendTable(mydb, "State", StateTable, row.names = FALSE) #TODO: should that be StateTable?
 # can we consolidate these two above?
 dbSendQuery(mydb, query)
 ```
@@ -320,7 +331,7 @@ stateDataFromDatabase <- dbGetQuery(mydb, "SELECT * FROM State;")
 
 # Join query from Database with query from birdStrike_df
 stateDataTemp <- sqldf('SELECT DISTINCT "Airport..Name" AS airport_name
-                       , s_id AS state_id
+                       , s_id AS state
                        FROM csv
                        JOIN stateDataFromDatabase
                        ON "Origin.State" = state')
@@ -393,12 +404,12 @@ AircraftTableLargeAircraft <- sqldf('SELECT DISTINCT "Aircraft..Make.Model" AS n
                                     "Is.Aircraft.Large." AS large_aircraft
                                     FROM birdStrike_df
                                     GROUP BY name')
-head(AircraftTableLargeAircraft)
+AircraftTableLargeAircraft
 ```
 
 ```{r}
 # Union df that has engine setup with df that has aircraft_type and large_aircraft
-AircraftTable <- sqldf('SELECT rest.name
+AircraftTable <- sqldf('SELECT rest.name AS aircraft_name
                        , rest.aircraft_type
                        , engines.number_engines
                        , rest.large_aircraft
@@ -406,7 +417,7 @@ AircraftTable <- sqldf('SELECT rest.name
                        JOIN AircraftTableEnginesOnly AS engines
                        ON rest.name = engines.name
                        ORDER BY rest.name')
-head(AircraftTable)
+AircraftTable
 ```
 
 ```{r}
@@ -415,36 +426,49 @@ query <- sqlAppendTable(mydb, "Aircraft", AircraftTable, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
 
+## PREPARE DATA: Flight
+```{sql connection=mydb}
+AircraftFromAWS 
+```
+
+
+```{r}
+
+```
+
+
 ## PREPARE DATA: Note
 
 ```{r}
-NoteData <- sqldf('SELECT DISTINCT "Remarks" AS note
+NoteTable <- sqldf('SELECT "UniqueKey" AS n_id, "Remarks" AS note
                        FROM birdStrike_df')
-
+head(NoteTable)
 
 # I feel like for all of these we can remove the temp table state. Can we test out together?
 ```
 
 ```{r}
 # TODO: this is not really important for anything, but could we put these chunks together?
-query <- sqlAppendTable(mydb, "Note", NoteData, row.names = FALSE)
+query <- sqlAppendTable(mydb, "Note", NoteTable, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
 
 ## PREPARE DATA: Wildlife
 
 ```{r}
-WildlifeData <- sqldf('SELECT DISTINCT "Wildlife..Species" AS species
-                  , "Wildlife..Size" as size
-                  FROM birdStrike_df')
-
+WildlifeTable <- sqldf('SELECT DISTINCT * FROM (SELECT
+                  CASE
+                    WHEN "Wildlife..Species" LIKE "%Unknown%" THEN "UNKNOWN"
+                    ELSE "Wildlife..Species" END AS Species
+                  FROM birdStrike_df)')
+count(WildlifeTable)
 
 # I feel like for all of these we can remove the temp table state. Can we test out together?
 ```
 
 ```{r}
 # TODO: this is not really important for anything, but could we put these chunks together?
-query <- sqlAppendTable(mydb, "Note", WildlifeData, row.names = FALSE)
+query <- sqlAppendTable(mydb, "Wildlife", WildlifeTable, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
 
