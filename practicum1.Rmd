@@ -269,6 +269,10 @@ for (row in 1:nrow(birdStrike_df)){
 sqldf('SELECT "FlightDate", "parsed_date" FROM birdStrike_df')
 ```
 
+```{r}
+birdStrike_df
+```
+
 
 
 ## Load CSV File as DataFrame >> THIS IS A TEST TO PULL IN rownumber, which we could possibly use to link everything together
