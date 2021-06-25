@@ -584,7 +584,7 @@ dbSendQuery(mydb, query)
 ```{r}
 
 # Younis actually learned how to parse strings with ',' delim yesterday into 
-# select distinct.. i'll ask how to do
+# I'll ask how to do...
 
 PrecipTable <- sqldf('SELECT DISTINCT  FROM 
                   FROM birdStrike_df)')
@@ -604,6 +604,7 @@ dbSendQuery(mydb, query)
 4. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents for each airline upon take-off or climb. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
+-- TODO: check all dis!
 SELECT SUM(BirdStrike.birdstrike_id) as incidents
 , airline_operator
 FROM BirdStrike
@@ -616,6 +617,7 @@ GROUP BY airline_operator
 5. (10 pts / 1 hr) Create a SQL query against your database to find the airports that had the most bird strike incidents (during any flight phase). Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
+-- TODO: check all dis!
 SELECT TOP 10 SUM(BirdStrike.birdstrike_id) as incidents
 , origin_airport
 FROM BirdStrike
@@ -628,6 +630,7 @@ ORDER BY incidents desc
 6. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents by year. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
+-- TODO: check all dis!
 SELECT SUM(BirdStrike.birdstrike_id) as incidents
 , YEAR(Flight.flight_date) as Year
 FROM BirdStrike
@@ -638,20 +641,48 @@ GROUP BY YEAR(Flight.flight_date)
 
 7. (10 pts / 3 hrs) Using the above data, build a column chart that visualizes the number of bird strikes incidents per year from 2008 to 2011 during take-off/climbing and during descent/approach/landing. Adorn the graph with appropriate axis labels.
 
-```{sql connection=mydb}
+```{r}
+# TODO: check all dis! 
 
+# pulling together into a data frame
+BirdstrikesPerYear <- sqldf('SELECT SUM(BirdStrike.birdstrike_id) as incidents
+                            , CASE 
+                              WHEN phase_of_flight = "Take-off run" THEN "Ascent"
+                              WHEN phase_of_flight = "Climb" THEN "Ascent"
+                              WHEN phase_of_flight = "Descent" THEN "Descent"
+                              WHEN phase_of_flight = "Approach" THEN "Descent"
+                              WHEN phase_of_flight = "Landing" THEN "Descent"
+                            END as phase
+                            , YEAR(Flight.flight_date) as Year
+                            FROM BirdStrike
+                            JOIN Flight
+                            ON BirdStrike.flight_id = Flight.f_id
+                            GROUP BY YEAR(Flight.flight_date), phase')
+
+rownames(BirdstrikesPerYear) <- c("Ascent", "Descent")
+
+# adorning the bar chart
+# link with help https://www.r-graph-gallery.com/211-basic-grouped-or-stacked-barplot.html
+barplot(
+    BirdstrikesPerYear,
+    beside = T,
+    xlab = 'Years',
+    ylab = 'Incidents',
+    title = 'Bird Strikes Per Year By Phase of Flight',
+    legend = rownames(BirdstrikesPerYear)
+)
 ```
+
 
 8. (10 pts / 3 hrs) Create a stored procedure in MySQL (note that if you used SQLite, then you cannot complete this step) that removes a bird strike incident from the database. You may decide what you need to pass to the stored procedure to remove a bird strike incident, e.g., departure airport, airlines, or some ID. Show that the deletion worked as expected.
 
 ```{sql connection=mydb}
-
+-- TODO
 ```
 
 ```{r}
 saveRDS(birdStrike_df, file = "my_data.rds")
 ```
-
 
 ## Disconnect 
 
