@@ -169,27 +169,27 @@ SELECT * FROM Note;
 ## CREATE TABLE: Birdstrike
 
 ```{sql connection=mydb}
-DROP TABLE IF EXISTS Birdstrike;
+DROP TABLE IF EXISTS BirdStrike;
 ```
 
 ```{sql connection=mydb}
-CREATE TABLE Birdstrike(
+CREATE TABLE BirdStrike(
   birdstrike_id INTEGER PRIMARY KEY AUTO_INCREMENT,
   flight_id INTEGER NOT NULL,
-  number_struck_est ENUM('1', '2 to 10', '11 to 100', '100+', 'Unknown') NOT NULL,
+  number_struck_est ENUM('1', '2 to 10', '11 to 100', '100+', 'UNKNOWN') NOT NULL,
   number_struck_actual INTEGER NOT NULL,
   phase_of_flight ENUM('Approach', 'Climb', 'Descent', 'Landing Roll', 
-                       'Parked', 'Take-off run', 'Taxi', 'Unknown') NOT NULL,
-  altitude_bin ENUM('< 1000 ft', '> 1000 ft', 'Unknown' NOT NULL,
+                       'Parked', 'Take-off run', 'Taxi', 'UNKNOWN') NOT NULL,
+  altitude_bin ENUM('< 1000 ft', '> 1000 ft', 'UNKNOWN') NOT NULL,
   impact_to_flight ENUM('Aborted Take-off', 'Engine Shut Down', 'None', 
-                        'Other', 'Precautionary Landing', 'Unknown') NOT NULL,
+                        'Other', 'Precautionary Landing', 'UNKNOWN') NOT NULL,
   indicated_damage BOOLEAN NOT NULL,
   wildlife_remains_collected BOOLEAN NOT NULL,
   wildlife_remains_smithsonian BOOLEAN NOT NULL,
   note_id INTEGER,
   wildlife_id INTEGER NOT NULL,
-  wildlife_size ENUM('Small', 'Medium', 'Large', 'unknown') NOT NULL,
-  pilot_warned ENUM('True', 'False', 'Unknown') NOT NULL,
+  wildlife_size ENUM('Small', 'Medium', 'Large', 'UNKNOWN') NOT NULL,
+  pilot_warned ENUM('True', 'False', 'UNKNOWN') NOT NULL,
   total_cost INTEGER NOT NULL,
   feet_above_ground INTEGER NOT NULL,
   num_people_injured INTEGER NOT NULL,
@@ -200,7 +200,7 @@ CREATE TABLE Birdstrike(
 ```
 
 ```{sql connection=mydb}
-SELECT * FROM Birdstrike;
+SELECT * FROM BirdStrike WHERE birdstrike_id IN (311697, 208561);
 ```
 
 ## CREATE TABLE: Precipitation
@@ -214,7 +214,7 @@ CREATE TABLE Precipitation(
   p_id INTEGER PRIMARY KEY AUTO_INCREMENT,
   precip_name ENUM('Fog', 'Rain', 'Snow', 'None') NOT NULL,
   birdstrike_id INTEGER NOT NULL,
-  CONSTRAINT birdstrike_id_fk FOREIGN KEY (birdstrike_id) REFERENCES Birdstrike(birdstrike_id)
+  CONSTRAINT birdstrike_id_fk FOREIGN KEY (birdstrike_id) REFERENCES BirdStrike(birdstrike_id)
   );
 ```
 
@@ -286,6 +286,11 @@ birdStrike_df$Wildlife..Species[birdStrike_df$Wildlife..Species == "Unknown bird
 
 ```                          
 
+## Cleaning Birdstrike
+```{r}
+birdStrike_df$Pilot.warned.of.birds.or.wildlife.[birdStrike_df$Pilot.warned.of.birds.or.wildlife. == "Y"] <- "True"
+birdStrike_df$Pilot.warned.of.birds.or.wildlife.[birdStrike_df$Pilot.warned.of.birds.or.wildlife. == "N"] <- "False"
+```     
 
 
 ```{r}
@@ -583,10 +588,36 @@ WildlifeFromAWS <- dbGetQuery(mydb, "SELECT * FROM Wildlife;")
 ```{r}
 birdStrike_df
 ```
+```{r}
+# TODO: confirm that "Record..ID" is right
+BirdStrikeTable <- sqldf('SELECT "Record.ID"as birdstrike_id
+                         , "UniqueKey" AS flight_id
+                         , "Wildlife..Number.struck" as number_struck_est
+                         , "Wildlife..Number.Struck.Actual" as number_struck_actual
+                         , "When..Phase.of.flight" as phase_of_flight
+                         , "Altitude.bin" as altitude_bin
+                         , "Effect..Impact.to.flight" as impact_to_flight
+                         , "Effect..Indicated.Damage" as indicated_damage
+                         , "Remains.of.wildlife.collected." as wildlife_remains_collected
+                         , "Remains.of.wildlife.sent.to.Smithsonian" as wildlife_remains_smithsonian
+                         , "Wildlife..Size" as wildlife_size
+                         , "UniqueKey" as note_id
+                         , wildlife.w_id as wildlife_id
+                         , "Pilot.warned.of.birds.or.wildlife." as pilot_warned
+                         , "Cost..Total.." as total_cost
+                         , "Feet.above.ground" as feet_above_ground
+                         , "Number.of.people.injured" as num_people_injured
+                         , "Conditions..Sky" as sky_conditions
+                         FROM birdStrike_df
+                         JOIN WildlifeFromAWS AS wildlife
+                         ON "Wildlife..Species" = wildlife.species')
+BirdStrikeTable
+```
+
 
 ```{r}
 # TODO: confirm that "Record..ID" is right
-BirdStrikeTable <- sqldf('SELECT "Record..ID"as birdstrike_id
+BirdStrikeTable <- sqldf('SELECT "Record.ID"as birdstrike_id
                          , flight.f_id AS flight_id
                          , "Wildlife..Number.struck" as number_struck_est
                          , "Wildlife..Number.Struck.Actual" as number_struck_actual
@@ -594,7 +625,7 @@ BirdStrikeTable <- sqldf('SELECT "Record..ID"as birdstrike_id
                          , "Altitude.bin" as altitude_bin
                          , "Effect..Impact.to.flight" as impact_to_flight
                          , "Effect..Indicated.Damage" as indicated_damage
-                         , "Remains.of.wilflife.collected." as wildlife_remains_collected
+                         , "Remains.of.wildlife.collected." as wildlife_remains_collected
                          , "Remains.of.wildlife.sent.to.Smithsonian" as wildlife_remains_smithsonian
                          , "Wildlife..Size" as wildlife_size
                          , note.n_id as note_id
@@ -608,7 +639,7 @@ BirdStrikeTable <- sqldf('SELECT "Record..ID"as birdstrike_id
                          JOIN FlightFromAWS AS flight
                          ON "UniqueKey" = flight.f_id
                          JOIN NoteFromAWS AS note
-                         ON "UniqueKey = note.n_id
+                         ON "UniqueKey" = note.n_id
                          JOIN WildlifeFromAWS AS wildlife
                          ON "UniqueKey" = wildlife.w_id')
 BirdStrikeTable
