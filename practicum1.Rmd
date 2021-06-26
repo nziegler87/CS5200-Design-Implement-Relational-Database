@@ -712,33 +712,37 @@ dbSendQuery(mydb, query)
 
 ```{sql connection=mydb}
 -- TODO: check all dis!
-SELECT SUM(BirdStrike.birdstrike_id) as incidents
-, airline_operator
+SELECT COUNT(BirdStrike.birdstrike_id) as incidents, airline_name
 FROM BirdStrike
 JOIN Flight
 ON BirdStrike.flight_id = Flight.f_id
-WHERE phase_of_flight = ('Take-off run' OR 'Climb')
-GROUP BY airline_operator
+JOIN AirlineOperator
+ON airline_operator = ao_id
+WHERE phase_of_flight IN ('Take-off run', 'Climb')
+GROUP BY airline_name
 ```
 
 5. (10 pts / 1 hr) Create a SQL query against your database to find the airports that had the most bird strike incidents (during any flight phase). Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
 -- TODO: check all dis!
-SELECT TOP 10 SUM(BirdStrike.birdstrike_id) as incidents
-, origin_airport
+SELECT COUNT(BirdStrike.birdstrike_id) as incidents
+, airport_name
 FROM BirdStrike
 JOIN Flight
 ON BirdStrike.flight_id = Flight.f_id
-GROUP BY origin_airport
+JOIN Airport
+ON origin_airport = a_id
+GROUP BY airport_name
 ORDER BY incidents desc
+LIMIT 10
 ```
 
 6. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents by year. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
 -- TODO: check all dis!
-SELECT SUM(BirdStrike.birdstrike_id) as incidents
+SELECT COUNT(BirdStrike.birdstrike_id) as incidents
 , YEAR(Flight.flight_date) as Year
 FROM BirdStrike
 JOIN Flight
@@ -752,7 +756,7 @@ GROUP BY YEAR(Flight.flight_date)
 # TODO: check all dis! 
 
 # pulling together into a data frame
-BirdstrikesPerYear <- sqldf('SELECT SUM(BirdStrike.birdstrike_id) as incidents
+BirdstrikesPerYear <- dbGetQuery(mydb, 'SELECT COUNT(BirdStrike.birdstrike_id) as incidents
                             , CASE 
                               WHEN phase_of_flight = "Take-off run" THEN "Ascent"
                               WHEN phase_of_flight = "Climb" THEN "Ascent"
@@ -766,7 +770,7 @@ BirdstrikesPerYear <- sqldf('SELECT SUM(BirdStrike.birdstrike_id) as incidents
                             ON BirdStrike.flight_id = Flight.f_id
                             GROUP BY YEAR(Flight.flight_date), phase')
 
-rownames(BirdstrikesPerYear) <- c("Ascent", "Descent")
+#rownames(BirdstrikesPerYear) <- c("Ascent", "Descent")
 
 # adorning the bar chart
 # link with help https://www.r-graph-gallery.com/211-basic-grouped-or-stacked-barplot.html
