@@ -248,6 +248,7 @@ names(birdStrike_df)[names(birdStrike_df) == "rn"] <- "UniqueKey"
 head(birdStrike_df)
 ```
 
+## Parsing Date
 ```{r}
 # If needed, this is used to drop the parsed_date column
 birdStrike_df = subset(birdStrike_df, select = -c(flight_date) )
@@ -271,6 +272,21 @@ sqldf('SELECT "UniqueKey", "FlightDate"
       , "flight_date" 
       FROM birdStrike_df')
 ```
+## Cleaning Wildlife
+```{r}
+birdStrike_df$Wildlife..Size[birdStrike_df$Wildlife..Species == "Unknown bird - small"] <- "Small"
+birdStrike_df$Wildlife..Size[birdStrike_df$Wildlife..Species == "Unknown bird - medium"] <- "Medium"
+birdStrike_df$Wildlife..Size[birdStrike_df$Wildlife..Species == "Unknown bird - large"] <- "Large"
+
+birdStrike_df$Wildlife..Species[birdStrike_df$Wildlife..Species == "Unknown bird - small"] <- "UNKNOWN"
+birdStrike_df$Wildlife..Species[birdStrike_df$Wildlife..Species == "Unknown bird - medium"] <- "UNKNOWN"
+birdStrike_df$Wildlife..Species[birdStrike_df$Wildlife..Species == "Unknown bird - large"] <- "UNKNOWN"
+birdStrike_df$Wildlife..Species[birdStrike_df$Wildlife..Species == "Unknown bird or bat"] <- "UNKNOWN"
+
+
+```                          
+
+
 
 ```{r}
 birdStrike_df
@@ -589,10 +605,6 @@ BirdStrikeTable <- sqldf('SELECT "Record..ID"as birdstrike_id
                          , "Number.of.people.injured" as num_people_injured
                          , "Conditions..Sky" as sky_conditions
                          FROM birdStrike_df
-                         
-                         -- I havent fully thought this join through...
-                         -- we adjusted for the wildlife unknowns so match on what?
-                         -- I think the ID is the same as the uniquekey...
                          JOIN FlightFromAWS AS flight
                          ON "UniqueKey" = flight.f_id
                          JOIN NoteFromAWS AS note
