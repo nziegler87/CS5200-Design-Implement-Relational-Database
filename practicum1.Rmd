@@ -788,7 +788,14 @@ barplot(
 8. (10 pts / 3 hrs) Create a stored procedure in MySQL (note that if you used SQLite, then you cannot complete this step) that removes a bird strike incident from the database. You may decide what you need to pass to the stored procedure to remove a bird strike incident, e.g., departure airport, airlines, or some ID. Show that the deletion worked as expected.
 
 ```{sql connection=mydb}
--- TODO
+DELIMETER // --might not need this delimiter thing
+CREATE PROCEDURE Remove_BirdStrike (IN birdstrike_id_to_delete INTEGER)
+BEGIN
+  DELETE FROM Note WHERE Note.n_id = (SELECT BirdStrike.note_id FROM BirdStrike WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete)//
+  DELETE FROM Flight WHERE Flight.f_id = (SELECT BirdStrike.flight_id FROM BirdStrike WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete)//
+  DELETE FROM BirdStrike WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete//
+  DELETE FROM Precipitation WHERE Precipitation.birdstrike_id = birdstrike_id_to_delete//
+DELIMETER;
 ```
 
 ```{r}
