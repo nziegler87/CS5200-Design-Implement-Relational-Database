@@ -116,7 +116,7 @@ DROP TABLE IF EXISTS Flight;
 ```{sql connection=mydb}
 CREATE TABLE Flight(
   f_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  flight_date DATETIME,
+  flight_date DATE NOT NULL,
   aircraft_id INTEGER NOT NULL,
   origin_airport INTEGER NOT NULL,
   airline_operator INTEGER NOT NULL,
@@ -248,7 +248,7 @@ head(birdStrike_df)
 
 ```{r}
 # If needed, this is used to drop the parsed_date column
-birdStrike_df = subset(birdStrike_df, select = -c(parsed_date) )
+birdStrike_df = subset(birdStrike_df, select = -c(flight_date) )
 ```
 
 ```{r}
@@ -256,17 +256,17 @@ birdStrike_df = subset(birdStrike_df, select = -c(parsed_date) )
 for (row in 1:nrow(birdStrike_df)){
   date_time_string <- unlist(birdStrike_df[row, "FlightDate"])
   if (date_time_string == "UNKNOWN"){
-    date_time_parsed <- as.Date(as.character(as.POSIXct("1/1/1776 0:00", format="%m/%d/%Y %H:%M")))
+    date_time_parsed <- as.POSIXct("1/1/1776 0:00", format="%m/%d/%Y %H:%M")
   } else {
-    date_time_parsed <- as.Date(as.character(as.POSIXct(date_time_string, format="%m/%d/%Y %H:%M")))
+    date_time_parsed <- as.POSIXct(date_time_string, format="%m/%d/%Y %H:%M")
   }
-  birdStrike_df[row, "parsed_date"] <- date_time_parsed
+  birdStrike_df[row, "flight_date"] <- date_time_parsed
 }
 ```
 
 ```{r}
 sqldf('SELECT "UniqueKey", "FlightDate"
-      , CAST (CAST ("parsed_date" AS CHAR) AS DATE)
+      , "flight_date" 
       FROM birdStrike_df')
 ```
 
@@ -445,23 +445,61 @@ dbSendQuery(mydb, query)
 AircraftFromAWS <- dbGetQuery(mydb, "SELECT * FROM Aircraft;")
 AirportFromAWS <- dbGetQuery(mydb, "SELECT * FROM Airport;")
 AirlineOperatorFromAWS <- dbGetQuery(mydb, "SELECT * FROM AirlineOperator;")
+StateFromAWS <- dbGetQuery(mydb, "SELECT * FROM State;")
 ```
 
 ```{r}
-FlightTable <- sqldf('SELECT "UniqueKey"as f_id
-                     , aircraft.a_id AS aircraft_id
-                     , airport.a_id AS origin_airport
+
+sqldf('SELECT * FROM AirportFromAWS WHERE airport_name = "UNKNOWN"')
+
+```
+
+```{r}
+FlightTableWithAircraft <- sqldf('SELECT "UniqueKey" as f_id, "Record.ID" AS record_id
+                                  , aircraft.a_id AS aircraft_id, aircraft.aircraft_name AS aircraft_name
+                                  , "Airport..Name" AS airport_name
+                                  , "Aircraft..Airline.Operator"
+                                  FROM birdStrike_df
+                                  JOIN AircraftFromAWS AS aircraft
+                                  ON "Aircraft..Make.Model" = aircraft.aircraft_name')
+FlightTableWithAircraft
+
+FlightTableWithAircraft_AirlineOperator <- sqldf('SELECT f_id, record_id, aircraft_id, aircraft_name
+                                                , airlineOperator.ao_id AS airline_operator
+                                                , airlineOperator.airline_name AS airline_name
+                                                , airport_name
+                                                FROM FlightTableWithAircraft
+                                                JOIN AirlineOperatorFromAWS AS airlineOperator
+                     ON "Aircraft..Airline.Operator" = airlineOperator.airline_name')
+
+FlightTableWithAircraft_AirlineOperator
+
+FlightTableWithAircraft_Airport <- sqldf('SELECT f_id, record_id, aircraft_id, aircraft_name
+                                          , airport.a_id AS airport_id
+                                          , airport.airport_name AS airport_name
+                                         FROM FlightTableWithAircraft_AirlineOperator
+                                         JOIN AirportFromAWS AS airport
+                                         ON FlightTableWithAircraft_AirlineOperator.airport_name = airport.airport_name')
+FlightTableWithAircraft_Airport
+```
+
+
+```{r}
+FlightTable <- sqldf('SELECT "UniqueKey" AS f_id, "Record.ID", "Origin.State", airport.state
+                     , "flight_date"
+                     , aircraft.a_id AS aircraft_id, aircraft.aircraft_name
+                     , airport.a_id AS origin_airport, airport.airport_name
                      , airline_operator.ao_id AS airline_operator
                      FROM birdStrike_df
                      JOIN AircraftFromAWS AS aircraft
                      ON "Aircraft..Make.Model" = aircraft.aircraft_name
+                     JOIN StateFromAWS AS state
+                     ON airport.state = state.s_id
                      JOIN AirportFromAWS AS airport
-                     ON "Airport..Name" = airport.airport_name
+                     ON "Airport..Name" = airport.airport_name AND airport.state = state.s_id
                      JOIN AirlineOperatorFromAWS AS airline_operator
                      ON "Aircraft..Airline.Operator" = airline_operator.airline_name')
 FlightTable
-FlightDates <- sqldf('SELECT "UniqueKey", "parsed_date" FROM birdStrike_df')
-FlightDates
 ```
 
 ```{r}
