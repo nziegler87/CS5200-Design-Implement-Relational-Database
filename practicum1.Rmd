@@ -130,6 +130,8 @@ CREATE TABLE Flight(
 SELECT * FROM Flight;
 ```
 
+
+
 ## CREATE TABLE: Wildlife
 
 ```{sql connection=mydb}
@@ -256,9 +258,9 @@ birdStrike_df = subset(birdStrike_df, select = -c(flight_date) )
 for (row in 1:nrow(birdStrike_df)){
   date_time_string <- unlist(birdStrike_df[row, "FlightDate"])
   if (date_time_string == "UNKNOWN"){
-    date_time_parsed <- as.POSIXct("1/1/1776 0:00", format="%m/%d/%Y %H:%M")
+    date_time_parsed <- as.Date(as.character(as.POSIXct("1/1/1776 0:00", format="%m/%d/%Y %H:%M")))
   } else {
-    date_time_parsed <- as.POSIXct(date_time_string, format="%m/%d/%Y %H:%M")
+    date_time_parsed <- as.Date(as.character(as.POSIXct(date_time_string, format="%m/%d/%Y %H:%M")))
   }
   birdStrike_df[row, "flight_date"] <- date_time_parsed
 }
@@ -455,32 +457,37 @@ sqldf('SELECT * FROM AirportFromAWS WHERE airport_name = "UNKNOWN"')
 ```
 
 ```{r}
-FlightTableWithAircraft <- sqldf('SELECT "UniqueKey" as f_id, "Record.ID" AS record_id
+FlightTableWithAircraft <- sqldf('SELECT "UniqueKey" as f_id, "Record.ID" AS record_id, flight_date
                                   , aircraft.a_id AS aircraft_id, aircraft.aircraft_name AS aircraft_name
                                   , "Airport..Name" AS airport_name
+                                  , "Origin.State" AS origin_state
                                   , "Aircraft..Airline.Operator"
                                   FROM birdStrike_df
                                   JOIN AircraftFromAWS AS aircraft
                                   ON "Aircraft..Make.Model" = aircraft.aircraft_name')
-FlightTableWithAircraft
+#FlightTableWithAircraft
 
-FlightTableWithAircraft_AirlineOperator <- sqldf('SELECT f_id, record_id, aircraft_id, aircraft_name
-                                                , airlineOperator.ao_id AS airline_operator
-                                                , airlineOperator.airline_name AS airline_name
-                                                , airport_name
-                                                FROM FlightTableWithAircraft
+FlightTableWithAircraft_State <- sqldf('SELECT *
+                                        FROM FlightTableWithAircraft
+                                        JOIN StateFromAWS
+                                        ON origin_state = state')
+
+#FlightTableWithAircraft_State
+
+
+FlightTableWithAircraft_AirlineOperator <- sqldf('SELECT *
+                                                FROM FlightTableWithAircraft_State
                                                 JOIN AirlineOperatorFromAWS AS airlineOperator
-                     ON "Aircraft..Airline.Operator" = airlineOperator.airline_name')
+                                                 ON "Aircraft..Airline.Operator" = airlineOperator.airline_name')
 
-FlightTableWithAircraft_AirlineOperator
+#FlightTableWithAircraft_AirlineOperator
 
-FlightTableWithAircraft_Airport <- sqldf('SELECT f_id, record_id, aircraft_id, aircraft_name
-                                          , airport.a_id AS airport_id
-                                          , airport.airport_name AS airport_name
+FlightTable <- sqldf('SELECT f_id, flight_date, aircraft_id, a_id AS origin_airport, ao_id AS airline_operator
                                          FROM FlightTableWithAircraft_AirlineOperator
                                          JOIN AirportFromAWS AS airport
-                                         ON FlightTableWithAircraft_AirlineOperator.airport_name = airport.airport_name')
-FlightTableWithAircraft_Airport
+                                         ON FlightTableWithAircraft_AirlineOperator.airport_name = airport.airport_name AND airport.state = s_id')
+FlightTable
+
 ```
 
 
@@ -504,8 +511,9 @@ FlightTable
 
 ```{r}
 # TODO: this is not really important for anything, but could we put these chunks together?
-query <- sqlAppendTable(mydb, "Flight", FlightTable, row.names = FALSE)
-dbSendQuery(mydb, query)
+# query <- sqlAppendTable(mydb, "Flight", FlightTable, row.names = FALSE)
+# dbSendQuery(mydb, query)
+dbWriteTable(mydb, "Flight", FlightTable, row.names = FALSE, overwrite = TRUE)
 ```
 
 ## PREPARE DATA: Note
