@@ -80,6 +80,19 @@ write.csv(df, "bird_strike_from_AWS.csv", row.names = FALSE)
 
 ```
 
+## Draft stored procedure
+```{sql connection=mydb}
+DELIMETER // --might not need this delimiter thing
+CREATE PROCEDURE Remove_BirdStrike (IN birdstrike_id_to_delete INTEGER)
+BEGIN
+  DELETE FROM Note WHERE Note.n_id = (SELECT BirdStrike.note_id FROM BirdStrike WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete)//
+  DELETE FROM Flight WHERE Flight.f_id = (SELECT BirdStrike.flight_id FROM BirdStrike WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete)//
+  DELETE FROM BirdStrike WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete//
+  DELETE FROM Precipitation WHERE Precipitation.birdstrike_id = birdstrike_id_to_delete//
+DELIMETER;
+```
+
+
 ```{r}
 dbDisconnect(mydb)
 ```
