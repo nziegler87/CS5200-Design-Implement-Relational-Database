@@ -256,40 +256,22 @@ birdStrike_df = subset(birdStrike_df, select = -c(parsed_date) )
 for (row in 1:nrow(birdStrike_df)){
   date_time_string <- unlist(birdStrike_df[row, "FlightDate"])
   if (date_time_string == "UNKNOWN"){
-    date_time_parsed <- as.POSIXct("1/1/1776 0:00", format="%m/%d/%Y %H:%M")
+    date_time_parsed <- as.Date(as.character(as.POSIXct("1/1/1776 0:00", format="%m/%d/%Y %H:%M")))
   } else {
-    date_time_parsed <- as.POSIXct(date_time_string, format="%m/%d/%Y %H:%M")
+    date_time_parsed <- as.Date(as.character(as.POSIXct(date_time_string, format="%m/%d/%Y %H:%M")))
   }
   birdStrike_df[row, "parsed_date"] <- date_time_parsed
 }
 ```
 
 ```{r}
-sqldf('SELECT "FlightDate"
-      , "parsed_date" 
+sqldf('SELECT "UniqueKey", "FlightDate"
+      , CAST (CAST ("parsed_date" AS CHAR) AS DATE)
       FROM birdStrike_df')
 ```
 
 ```{r}
 birdStrike_df
-```
-
-## Load CSV File as DataFrame >> THIS IS A TEST TO PULL IN rownumber, which we could possibly use to link everything together
-
-```{r}
-## Saved a copy of birdstrikes.csv to our git repo
-file <- "BirdStrikesData.csv"
-
-birdStrike_df_TEST <- read.csv(file, header = TRUE, stringsAsFactors = FALSE, na.strings=c("", " "))
-birdStrike_df_TEST[is.na(birdStrike_df)] <- 'UNKNOWN'
-
-setDT(birdStrike_df_TEST, keep.rownames = TRUE)[]
-names(birdStrike_df_TEST)[names(birdStrike_df_TEST) == "rn"] <- "UniqueKey"
-head(birdStrike_df_TEST)
-```
-
-```{r}
-head(birdStrike_df)
 ```
 
 # Cleaning the data
@@ -467,7 +449,6 @@ AirlineOperatorFromAWS <- dbGetQuery(mydb, "SELECT * FROM AirlineOperator;")
 
 ```{r}
 FlightTable <- sqldf('SELECT "UniqueKey"as f_id
-                     , "parsed_date" AS flight_date
                      , aircraft.a_id AS aircraft_id
                      , airport.a_id AS origin_airport
                      , airline_operator.ao_id AS airline_operator
@@ -479,6 +460,8 @@ FlightTable <- sqldf('SELECT "UniqueKey"as f_id
                      JOIN AirlineOperatorFromAWS AS airline_operator
                      ON "Aircraft..Airline.Operator" = airline_operator.airline_name')
 FlightTable
+FlightDates <- sqldf('SELECT "UniqueKey", "parsed_date" FROM birdStrike_df')
+FlightDates
 ```
 
 ```{r}
@@ -586,11 +569,46 @@ dbSendQuery(mydb, query)
 # Younis actually learned how to parse strings with ',' delim yesterday into 
 # I'll ask how to do...
 
-PrecipTable <- sqldf('SELECT DISTINCT  FROM 
+PrecipTable <- sqldf('SELECT DISTINCTFROM 
                   FROM birdStrike_df)')
 count(PrecipTable)
 
-# I feel like for all of these we can remove the temp table state. Can we test out together?
+## Have Younis enlighten us with SQL parsing??
+
+```
+
+```{r}
+strike_and_precip <- sqldf('SELECT "Record.ID" AS birdstrike_id, "Conditions..Precipitation" AS precip_name
+                              FROM birdStrike_df')
+head(strike_and_precip)
+```
+
+
+```{r}
+PrecipTable <- data.frame(matrix(ncol = 2, nrow = 0))
+col_names <- c("birdstrike_id", "precip_name")
+colnames(PrecipTable) <- col_names
+
+#PrecipTable <- data.frame("birdstrike_id"=character(), "precip_name"=character())
+PrecipTable
+```
+
+```{r}
+for (row in 1:nrow(strike_and_precip)){
+  record_id <- strike_and_precip[row, "birdstrike_id"]
+  precip_parsed <- unlist(strsplit(strike_and_precip[row, "precip_name"], "\\,\ "))
+  for (precip in precip_parsed){
+    new_row <- c(record_id, precip)
+    PrecipTable <- rbind(new_row, PrecipTable)
+  }
+}
+```
+
+
+
+```{r}
+colnames(PrecipTable) <- col_names
+PrecipTable
 ```
 
 ```{r}
@@ -682,6 +700,10 @@ barplot(
 
 ```{r}
 saveRDS(birdStrike_df, file = "my_data.rds")
+```
+
+```{r}
+readRDS(file = "my_data.rds")
 ```
 
 ## Disconnect 
