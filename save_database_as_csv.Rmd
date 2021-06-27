@@ -21,10 +21,10 @@ SELECT BirdStrike.birdstrike_id, Aircraft.aircraft_type, Airport.airport_name
        , BirdStrike.number_struck_est, BirdStrike.impact_to_flight
        , Flight.flight_date, BirdStrike.indicated_damage
        , Aircraft.number_engines, AirlineOperator.airline_name
-       , State.state, BirdStrike.phase_of_flight, Precipitation.precip_name
+       , State.state_name, BirdStrike.phase_of_flight, Precipitation.precip_name
        , BirdStrike.wildlife_remains_smithsonian, Note.note
        , BirdStrike.wildlife_size, BirdStrike.sky_conditions
-       , Wildlife.species, BirdStrike.pilot_warned, BirdStrike.total_cost
+       , Wildlife.species_name, BirdStrike.pilot_warned, BirdStrike.total_cost
        , BirdStrike.feet_above_ground, BirdStrike.num_people_injured
        , Aircraft.large_aircraft
 FROM BirdStrike
@@ -39,11 +39,11 @@ FROM BirdStrike
      JOIN Aircraft
      ON Flight.aircraft_id = Aircraft.a_id
      JOIN Airport
-     ON Flight.origin_airport = Airport.a_id
+     ON Flight.origin_airport_id = Airport.a_id
      JOIN State
-     ON Airport.State = State.s_id
+     ON Airport.state_id = State.s_id
      JOIN AirlineOperator
-     ON Flight.airline_operator = AirlineOperator.ao_id
+     ON Flight.airline_operator_id = AirlineOperator.ao_id
      ORDER BY birdstrike_id DESC;
 ```
 ```{r}
