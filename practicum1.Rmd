@@ -42,8 +42,8 @@ DROP TABLE IF EXISTS Aircraft;
 CREATE TABLE Aircraft(
   a_id INTEGER PRIMARY KEY AUTO_INCREMENT,
   aircraft_name VARCHAR(255) NOT NULL,
-  aircraft_type ENUM('Airplane', 'UNKNOWN') NOT NULL,                  --TODO: Changed airline to Airline to match the ERD and CSV file
-  number_engines ENUM('1', '2', '3', '4', '5', '6', '7', '8', 'UNKNOWN') NOT NULL,          --TODO: Expanded number of engines
+  aircraft_type ENUM('Airplane', 'UNKNOWN') NOT NULL,                  -- TODO: Changed airline to Airline to match the ERD and CSV file
+  number_engines ENUM('1', '2', '3', '4', '5', '6', '7', '8', 'UNKNOWN') NOT NULL,          -- TODO: Expanded number of engines
   large_aircraft ENUM('Yes', 'No', 'UNKNOWN') NOT NULL
   );
   
@@ -63,7 +63,7 @@ DROP TABLE IF EXISTS State;
 ```{sql connection=mydb}
 CREATE TABLE State(
   s_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  state_name VARCHAR(255) NOT NULL UNIQUE     --TODO: Made this a bit more clear
+  state_name VARCHAR(255) NOT NULL UNIQUE     -- TODO: Made this a bit more clear
   );
 ```
 
@@ -81,7 +81,7 @@ DROP TABLE IF EXISTS Airport;
 CREATE TABLE Airport(
   a_id INTEGER PRIMARY KEY AUTO_INCREMENT,
   airport_name VARCHAR(255) NOT NULL,
-  state_id INTEGER NOT NULL,     --TODO: Made this state_id to match ERD
+  state_id INTEGER NOT NULL,     -- TODO: Made this state_id to match ERD
   CONSTRAINT state_id_fk FOREIGN KEY (state_id) REFERENCES State(s_id)
   );
 ```
@@ -118,8 +118,8 @@ CREATE TABLE Flight(
   f_id INTEGER PRIMARY KEY AUTO_INCREMENT,
   flight_date DATE NOT NULL,
   aircraft_id INTEGER NOT NULL,
-  origin_airport_id INTEGER NOT NULL,       --TODO:Added in _id here
-  airline_operator_id INTEGER NOT NULL,       --TODO:Added in _id here
+  origin_airport_id INTEGER NOT NULL,       -- TODO:Added in _id here
+  airline_operator_id INTEGER NOT NULL,       -- TODO:Added in _id here
   CONSTRAINT aircraft_id_fk FOREIGN KEY (aircraft_id) REFERENCES Aircraft(a_id),
   CONSTRAINT origin_airport_id_fk FOREIGN KEY (origin_airport_id) REFERENCES Airport(a_id),
   CONSTRAINT airline_operator_id_fk FOREIGN KEY (airline_operator_id) REFERENCES AirlineOperator(ao_id)
@@ -139,7 +139,7 @@ DROP TABLE IF EXISTS Wildlife;
 ```{sql connection=mydb}
 CREATE TABLE Wildlife(
   w_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-  species_name VARCHAR(255) NOT NULL UNIQUE     --TODO: Changed this to species_name
+  species_name VARCHAR(255) NOT NULL UNIQUE     -- TODO: Changed this to species_name
   );
 ```
 
@@ -198,7 +198,7 @@ CREATE TABLE BirdStrike(
 ```
 
 ```{sql connection=mydb}
-SELECT * FROM BirdStrike WHERE birdstrike_id IN (311697, 208561);
+SELECT * FROM BirdStrike;
 ```
 
 ## CREATE TABLE: Precipitation
@@ -305,12 +305,16 @@ birdStrike_df$Pilot.warned.of.birds.or.wildlife.[birdStrike_df$Pilot.warned.of.b
 AirlineOperatorTable <- sqldf('SELECT DISTINCT "Aircraft..Airline.Operator" AS airline_name 
                                FROM birdStrike_df
                                ORDER BY airline_name')
+setDT(AirlineOperatorTable, keep.rownames = TRUE)[] 
+AirlineOperatorTable$rn <- as.integer(AirlineOperatorTable$rn)
+names(AirlineOperatorTable)[names(AirlineOperatorTable) == "rn"] <- "ao_id"
+
 head(AirlineOperatorTable)
 ```
 
 ```{r}
 # Upload data
-dbWriteTable(mydb, "AirlineOperator", AirlineOperatorTable, row.names = FALSE)
+dbWriteTable(mydb, "AirlineOperator", AirlineOperatorTable, row.names = FALSE, append = TRUE)
 
 # TODO: Remove
 # Create query and upload
@@ -325,12 +329,12 @@ dbWriteTable(mydb, "AirlineOperator", AirlineOperatorTable, row.names = FALSE)
 # Retrieve Data
 StateTable <- sqldf('SELECT DISTINCT "Origin.State" AS state_name
                      FROM birdStrike_df
-                     ORDER BY state')
+                     ORDER BY state_name')
 head(StateTable)
 ```
 
 ```{r}
-dbWriteTable(mydb, "State", StateTable, row.names = FALSE, overwrite = TRUE)
+dbWriteTable(mydb, "State", StateTable, row.names = FALSE, append = TRUE)
 
 # TODO: Remove
 # Create query and upload
@@ -348,7 +352,7 @@ stateDataFromDatabase <- dbGetQuery(mydb, "SELECT * FROM State;")
 # Join query from Database with query from birdStrike_df
 stateDataTemp <- sqldf('SELECT DISTINCT "Airport..Name" AS airport_name
                        , s_id AS state_id
-                       FROM csv
+                       FROM birdStrike_df
                        JOIN stateDataFromDatabase
                        ON "Origin.State" = state_name')
 
@@ -361,7 +365,7 @@ airportTable <- sqldf('SELECT DISTINCT airport_name
 ```
 
 ```{r}
-dbWriteTable(mydb, "Airport", airportTable, row.names = FALSE, overwrite = TRUE)
+dbWriteTable(mydb, "Airport", airportTable, row.names = FALSE, append = TRUE)
 
 # TODO: Remove
 #query <- sqlAppendTable(mydb, "Airport", airportData, row.names = FALSE)
@@ -438,7 +442,7 @@ AircraftTable
 ```
 
 ```{r}
-dbWriteTable(mydb, "Aircraft", AircraftTable, row.names = FALSE, overwrite = TRUE)
+dbWriteTable(mydb, "Aircraft", AircraftTable, row.names = FALSE, append = TRUE)
 
 #TODO: Remove
 #query <- sqlAppendTable(mydb, "Aircraft", AircraftTable, row.names = FALSE)
@@ -483,7 +487,7 @@ FlightTableWithAircraft_AirlineOperator <- sqldf('SELECT *
 FlightTable <- sqldf('SELECT f_id, flight_date, aircraft_id, a_id AS origin_airport_id, ao_id AS airline_operator_id
                                          FROM FlightTableWithAircraft_AirlineOperator
                                          JOIN AirportFromAWS AS airport
-                                         ON FlightTableWithAircraft_AirlineOperator.airport_name = airport.airport_name AND airport.state = s_id')
+                                         ON FlightTableWithAircraft_AirlineOperator.airport_name = airport.airport_name AND airport.state_id = s_id')
 head(FlightTable)
 ```
 
@@ -510,7 +514,7 @@ head(FlightTable)
 ```{r}
 # query <- sqlAppendTable(mydb, "Flight", FlightTable, row.names = FALSE)
 # dbSendQuery(mydb, query)
-dbWriteTable(mydb, "Flight", FlightTable, row.names = FALSE, overwrite = TRUE)
+dbWriteTable(mydb, "Flight", FlightTable, row.names = FALSE, append = TRUE)
 ```
 
 ## PREPARE DATA: Note
@@ -520,11 +524,10 @@ NoteTable <- sqldf('SELECT "UniqueKey" AS n_id, "Remarks" AS note
                        FROM birdStrike_df')
 head(NoteTable)
 
-# I feel like for all of these we can remove the temp table state. Can we test out together?
 ```
 
 ```{r}
-dbWriteTable(mydb, "Note", NoteTable, row.names = FALSE, overwite = TRUE)
+dbWriteTable(mydb, "Note", NoteTable, row.names = FALSE, append = TRUE)
 
 #TODO: Remove
 #query <- sqlAppendTable(mydb, "Note", NoteTable, row.names = FALSE)
@@ -538,13 +541,13 @@ dbWriteTable(mydb, "Note", NoteTable, row.names = FALSE, overwite = TRUE)
 WildlifeTable <- sqldf('SELECT DISTINCT * FROM (SELECT
                   CASE
                     WHEN "Wildlife..Species" LIKE "%Unknown%" THEN "UNKNOWN"
-                    ELSE "Wildlife..Species" END AS Species
+                    ELSE "Wildlife..Species" END AS species_name
                   FROM birdStrike_df)')
-count(WildlifeTable)
+head(WildlifeTable)
 ```
 
 ```{r}
-dbWriteTable(mydb, "Wildlife", WildlifeTable, row.names = FALSE, overwite = TRUE)
+dbWriteTable(mydb, "Wildlife", WildlifeTable, row.names = FALSE, append = TRUE)
 #query <- sqlAppendTable(mydb, "Wildlife", WildlifeTable, row.names = FALSE)
 #dbSendQuery(mydb, query)
 ```
@@ -616,7 +619,7 @@ head(BirdStrikeTable)
 ```
 
 ```{r}
-dbWriteTable(mydb, "BirdStrike", BirdStrikeTable, row.names = FALSE, overwrite = TRUE)
+dbWriteTable(mydb, "BirdStrike", BirdStrikeTable, row.names = FALSE, append = TRUE)
 
 #TODO: Remove
 
@@ -660,7 +663,7 @@ PrecipTable
 ```
 
 ```{r}
-dbWriteTable(mydb, "Precipitation", PrecipTable, row.names = FALSE, overwrite = TRUE)
+dbWriteTable(mydb, "Precipitation", PrecipTable, row.names = FALSE, append = TRUE)
 
 #TODO: Remove
 #query <- sqlAppendTable(mydb, "Precipitation", PrecipTable, row.names = FALSE)
