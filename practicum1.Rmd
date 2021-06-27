@@ -43,7 +43,7 @@ CREATE TABLE Aircraft(
   a_id INTEGER PRIMARY KEY AUTO_INCREMENT,
   aircraft_name VARCHAR(255) NOT NULL,
   aircraft_type ENUM('airplane', 'UNKNOWN') NOT NULL,
-  number_engines ENUM('1', '2', '3', '4', 'UNKNOWN') NOT NULL, -- TODO: we were going to correct C here, I think
+  number_engines ENUM('1', '2', '3', '4', 'UNKNOWN') NOT NULL,
   large_aircraft ENUM('Yes', 'No', 'UNKNOWN') NOT NULL
   );
   
@@ -129,8 +129,6 @@ CREATE TABLE Flight(
 ```{sql connection=mydb}
 SELECT * FROM Flight;
 ```
-
-
 
 ## CREATE TABLE: Wildlife
 
@@ -222,7 +220,7 @@ CREATE TABLE Precipitation(
 SELECT * FROM Precipitation;
 ```
 
-# Uploading the data
+# Cleaning the data
 
 ```{r}
 ## Needed to make sqldf work...learned that when fiddling
@@ -249,6 +247,7 @@ head(birdStrike_df)
 ```
 
 ## Parsing Date
+
 ```{r}
 # If needed, this is used to drop the parsed_date column
 birdStrike_df = subset(birdStrike_df, select = -c(flight_date) )
@@ -272,7 +271,9 @@ sqldf('SELECT "UniqueKey", "FlightDate"
       , "flight_date" 
       FROM birdStrike_df')
 ```
+
 ## Cleaning Wildlife
+
 ```{r}
 birdStrike_df$Wildlife..Size[birdStrike_df$Wildlife..Species == "Unknown bird - small"] <- "Small"
 birdStrike_df$Wildlife..Size[birdStrike_df$Wildlife..Species == "Unknown bird - medium"] <- "Medium"
@@ -282,11 +283,10 @@ birdStrike_df$Wildlife..Species[birdStrike_df$Wildlife..Species == "Unknown bird
 birdStrike_df$Wildlife..Species[birdStrike_df$Wildlife..Species == "Unknown bird - medium"] <- "UNKNOWN"
 birdStrike_df$Wildlife..Species[birdStrike_df$Wildlife..Species == "Unknown bird - large"] <- "UNKNOWN"
 birdStrike_df$Wildlife..Species[birdStrike_df$Wildlife..Species == "Unknown bird or bat"] <- "UNKNOWN"
-
-
 ```                          
 
 ## Cleaning Birdstrike
+
 ```{r}
 birdStrike_df$Pilot.warned.of.birds.or.wildlife.[birdStrike_df$Pilot.warned.of.birds.or.wildlife. == "Y"] <- "True"
 birdStrike_df$Pilot.warned.of.birds.or.wildlife.[birdStrike_df$Pilot.warned.of.birds.or.wildlife. == "N"] <- "False"
@@ -297,35 +297,7 @@ birdStrike_df$Pilot.warned.of.birds.or.wildlife.[birdStrike_df$Pilot.warned.of.b
 birdStrike_df
 ```
 
-# Cleaning the data
-
-## Making factors
-
-```{r}
-## TODO: is this even something we want to use?
-
-# aircraft table
-birdStrike_df$'Aircraft: Type' <- as.factor(birdStrike_df$'Aircraft: Type')
-birdStrike_df$'Aircraft: Number of engines' <- as.factor(birdStrike_df$'Aircraft: Number of engines')
-birdStrike_df$'Is Aircraft Large?' <- as.factor(birdStrike_df$'Is Aircraft Large?')
-
-# BirdStrike table
-birdStrike_df$'Altitude bin' <- as.factor(birdStrike_df$'Altitude bin')
-birdStrike_df$'Wildlife: Number struck' <- as.factor(birdStrike_df$'Wildlife: Number struck')
-birdStrike_df$'Effect: Impact to flight' <- as.factor(birdStrike_df$'Effect: Impact to flight')
-birdStrike_df$'Effect: Indicated Damage' <- as.factor(birdStrike_df$'Effect: Indicated Damage')
-birdStrike_df$'When: Phase of flight' <- as.factor(birdStrike_df$'When: Phase of flight')
-birdStrike_df$'Remains of wildlife collected' <- as.factor(birdStrike_df$'Remains of wildlife collected')
-birdStrike_df$'Remains of wildlife send to Smithsonian' <- as.factor(birdStrike_df$'Remains of wildlife send to Smithsonian')
-birdStrike_df$'Pilot warned of birds or wildlife' <- as.factor(birdStrike_df$'Pilot warned of birds or wildlife')
-
-# Precipitation table
-birdStrike_df$'Conditions: Precipitation' <- as.factor(birdStrike_df$'Conditions: Precipitation')
-
-# Wildlife table
-birdStrike_df$'Wildlife: Size' <- as.factor(birdStrike_df$'Wildlife: Size')
-
-```
+# Uploading the data
 
 ## PREPARE DATA: AirlineOperator
 
@@ -335,6 +307,7 @@ AirlineOperatorTable <- sqldf('SELECT DISTINCT "Aircraft..Airline.Operator" AS a
                                ORDER BY airline_name')
 head(AirlineOperatorTable)
 ```
+
 ```{r}
 # Create query and upload
 query <- sqlAppendTable(mydb, "AirlineOperator", AirlineOperatorTable, row.names = FALSE)
@@ -354,7 +327,7 @@ head(StateTable)
 
 ```{r}
 # Create query and upload
-query <- sqlAppendTable(mydb, "State", StateTable, row.names = FALSE) #TODO: should that be StateTable?
+query <- sqlAppendTable(mydb, "State", StateTable, row.names = FALSE) 
 # can we consolidate these two above?
 dbSendQuery(mydb, query)
 ```
@@ -382,7 +355,6 @@ airportData <- sqldf('SELECT DISTINCT airport_name
 ```
 
 ```{r}
-# TODO: this is not really important for anything, but could we put these chunks together?
 query <- sqlAppendTable(mydb, "Airport", airportData, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
@@ -457,7 +429,6 @@ AircraftTable
 ```
 
 ```{r}
-# TODO: this is not really important for anything, but could we put these chunks together?
 query <- sqlAppendTable(mydb, "Aircraft", AircraftTable, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
@@ -531,7 +502,6 @@ FlightTable
 ```
 
 ```{r}
-# TODO: this is not really important for anything, but could we put these chunks together?
 # query <- sqlAppendTable(mydb, "Flight", FlightTable, row.names = FALSE)
 # dbSendQuery(mydb, query)
 dbWriteTable(mydb, "Flight", FlightTable, row.names = FALSE, overwrite = TRUE)
@@ -548,7 +518,6 @@ head(NoteTable)
 ```
 
 ```{r}
-# TODO: this is not really important for anything, but could we put these chunks together?
 query <- sqlAppendTable(mydb, "Note", NoteTable, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
@@ -572,7 +541,6 @@ count(WildlifeTable)
 ```
 
 ```{r}
-# TODO: this is not really important for anything, but could we put these chunks together?
 query <- sqlAppendTable(mydb, "Wildlife", WildlifeTable, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
@@ -588,8 +556,8 @@ WildlifeFromAWS <- dbGetQuery(mydb, "SELECT * FROM Wildlife;")
 ```{r}
 birdStrike_df
 ```
+
 ```{r}
-# TODO: confirm that "Record..ID" is right
 BirdStrikeTable <- sqldf('SELECT "Record.ID"as birdstrike_id
                          , "UniqueKey" AS flight_id
                          , "Wildlife..Number.struck" as number_struck_est
@@ -616,7 +584,6 @@ BirdStrikeTable
 
 
 ```{r}
-# TODO: confirm that "Record..ID" is right
 BirdStrikeTable <- sqldf('SELECT "Record.ID"as birdstrike_id
                          , flight.f_id AS flight_id
                          , "Wildlife..Number.struck" as number_struck_est
@@ -646,7 +613,6 @@ BirdStrikeTable
 ```
 
 ```{r}
-# TODO: this is not really important for anything, but could we put these chunks together?
 query <- sqlAppendTable(mydb, "BirdStrike", BirdStrikeTable, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
@@ -654,24 +620,10 @@ dbSendQuery(mydb, query)
 ## PREPARE DATA: Precipitation
 
 ```{r}
-
-# Younis actually learned how to parse strings with ',' delim yesterday into 
-# I'll ask how to do...
-
-PrecipTable <- sqldf('SELECT DISTINCTFROM 
-                  FROM birdStrike_df)')
-count(PrecipTable)
-
-## Have Younis enlighten us with SQL parsing??
-
-```
-
-```{r}
 strike_and_precip <- sqldf('SELECT "Record.ID" AS birdstrike_id, "Conditions..Precipitation" AS precip_name
                               FROM birdStrike_df')
 head(strike_and_precip)
 ```
-
 
 ```{r}
 PrecipTable <- data.frame(matrix(ncol = 2, nrow = 0))
@@ -693,15 +645,12 @@ for (row in 1:nrow(strike_and_precip)){
 }
 ```
 
-
-
 ```{r}
 colnames(PrecipTable) <- col_names
 PrecipTable
 ```
 
 ```{r}
-# TODO: this is not really important for anything, but could we put these chunks together?
 query <- sqlAppendTable(mydb, "Precipitation", PrecipTable, row.names = FALSE)
 dbSendQuery(mydb, query)
 ```
@@ -711,7 +660,6 @@ dbSendQuery(mydb, query)
 4. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents for each airline upon take-off or climb. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
--- TODO: check all dis!
 SELECT COUNT(BirdStrike.birdstrike_id) as incidents, airline_name
 FROM BirdStrike
 JOIN Flight
@@ -725,7 +673,6 @@ GROUP BY airline_name
 5. (10 pts / 1 hr) Create a SQL query against your database to find the airports that had the most bird strike incidents (during any flight phase). Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
--- TODO: check all dis!
 SELECT COUNT(BirdStrike.birdstrike_id) as incidents
 , airport_name
 FROM BirdStrike
@@ -741,7 +688,6 @@ LIMIT 10
 6. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents by year. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
--- TODO: check all dis!
 SELECT COUNT(BirdStrike.birdstrike_id) as incidents
 , YEAR(Flight.flight_date) as Year
 FROM BirdStrike
