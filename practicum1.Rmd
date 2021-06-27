@@ -737,9 +737,8 @@ chart_df <- data.frame(year = years,
                        take_off = take_off_climb_birdstrikes$NumIncidents,
                        landing = landing_birdstrikes$NumIncidents)
 chart_df
-as.matrix(chart_df)
 
-barplot(chart_df, by=Year, beside=TRUE
+barplot(height = chart_df, by=Year, beside=TRUE
         , main = "Strikes Per Year"
         , xlab = "Number of Strikes"
         , ylab = "Year")
