@@ -714,6 +714,39 @@ GROUP BY YEAR(Flight.flight_date)
 7. (10 pts / 3 hrs) Using the above data, build a column chart that visualizes the number of bird strikes incidents per year from 2008 to 2011 during take-off/climbing and during descent/approach/landing. Adorn the graph with appropriate axis labels.
 
 ```{r}
+take_off_climb_birdstrikes <- dbGetQuery(mydb, 'SELECT YEAR(flight_date) AS Year, COUNT(birdstrike_id) AS NumIncidents
+                                                FROM BirdStrike
+                                                     JOIN Flight
+                                                     ON flight_id = Flight.f_id
+                                                WHERE phase_of_flight IN ("Take-off run", "Climb") AND
+                                                      flight_date >= 2008 AND flight_date <= 2011
+                                                GROUP BY Year')
+
+landing_birdstrikes <- dbGetQuery(mydb, 'SELECT YEAR(flight_date) AS Year, COUNT(birdstrike_id) AS NumIncidents
+                                                FROM BirdStrike
+                                                     JOIN Flight
+                                                     ON flight_id = Flight.f_id
+                                                WHERE phase_of_flight IN ("Approach", "Descent", "Landing Roll") AND
+                                                      flight_date >= 2008 AND flight_date <= 2011
+                                                GROUP BY Year')
+
+take_off_climb_birdstrikes
+landing_birdstrikes
+years <- c(2008, 2009, 2010, 2011)
+chart_df <- data.frame(year = years,
+                       take_off = take_off_climb_birdstrikes$NumIncidents,
+                       landing = landing_birdstrikes$NumIncidents)
+chart_df
+as.matrix(chart_df)
+
+barplot(chart_df, by=Year, beside=TRUE
+        , main = "Strikes Per Year"
+        , xlab = "Number of Strikes"
+        , ylab = "Year")
+```
+
+
+```{r}
 # TODO: check all dis! 
 
 # pulling together into a data frame
@@ -730,6 +763,7 @@ BirdstrikesPerYear <- dbGetQuery(mydb, 'SELECT COUNT(BirdStrike.birdstrike_id) a
                             JOIN Flight
                             ON BirdStrike.flight_id = Flight.f_id
                             GROUP BY YEAR(Flight.flight_date), phase')
+BirdstrikesPerYear
 
 #rownames(BirdstrikesPerYear) <- c("Ascent", "Descent")
 
