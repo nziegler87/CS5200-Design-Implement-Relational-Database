@@ -778,10 +778,10 @@ head(BirdstrikesPerYear)
 
 condition <- BirdstrikesPerYear$phase
 years <- BirdstrikesPerYear$Year
-value <- BirdstrikesPerYear$incidents
+incidents <- BirdstrikesPerYear$incidents
 
 
-barChart <- ggplot(data = BirdstrikesPerYear, aes(fille = condition, x = years, y = value, fill = condition)) + geom_bar(stat = "identity", position = "dodge") + ggtitle("Incidents per Year by Phase")
+barChart <- ggplot(data = BirdstrikesPerYear, aes(fille = condition, x = years, y = incidents, fill = condition)) + geom_bar(stat = "identity", position = "dodge") + ggtitle("Incidents per Year by Phase")
 print(barChart)
 ```
 
