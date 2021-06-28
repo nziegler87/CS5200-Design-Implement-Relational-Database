@@ -672,7 +672,7 @@ dbWriteTable(mydb, "Precipitation", PrecipTable, row.names = FALSE, append = TRU
 
 ## Practicum Questions
 
-4. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents for each airline upon take-off or climb. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
+### 4. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents for each airline upon take-off or climb. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
 SELECT COUNT(BirdStrike.birdstrike_id) as incidents, airline_name
@@ -685,7 +685,7 @@ WHERE phase_of_flight IN ('Take-off run', 'Climb')
 GROUP BY airline_name
 ```
 
-5. (10 pts / 1 hr) Create a SQL query against your database to find the airports that had the most bird strike incidents (during any flight phase). Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
+### 5. (10 pts / 1 hr) Create a SQL query against your database to find the airports that had the most bird strike incidents (during any flight phase). Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
 SELECT COUNT(BirdStrike.birdstrike_id) as incidents
@@ -700,7 +700,7 @@ ORDER BY incidents desc
 LIMIT 10
 ```
 
-6. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents by year. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
+### 6. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents by year. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
 SELECT COUNT(BirdStrike.birdstrike_id) as incidents
@@ -711,7 +711,7 @@ ON BirdStrike.flight_id = Flight.f_id
 GROUP BY YEAR(Flight.flight_date)
 ```
 
-7. (10 pts / 3 hrs) Using the above data, build a column chart that visualizes the number of bird strikes incidents per year from 2008 to 2011 during take-off/climbing and during descent/approach/landing. Adorn the graph with appropriate axis labels.
+### 7. (10 pts / 3 hrs) Using the above data, build a column chart that visualizes the number of bird strikes incidents per year from 2008 to 2011 during take-off/climbing and during descent/approach/landing. Adorn the graph with appropriate axis labels.
 
 ```{r}
 take_off_climb_birdstrikes <- dbGetQuery(mydb, 'SELECT YEAR(flight_date) AS Year, COUNT(birdstrike_id) AS NumIncidents
@@ -749,37 +749,57 @@ barplot(height = chart_df, by=Year, beside=TRUE
 # TODO: check all dis! 
 
 # pulling together into a data frame
-BirdstrikesPerYear <- dbGetQuery(mydb, 'SELECT COUNT(BirdStrike.birdstrike_id) as incidents
+BirdstrikesPerYear <- dbGetQuery(mydb, 
+                            'SELECT * FROM 
+                            (SELECT COUNT(BirdStrike.birdstrike_id) as incidents
                             , CASE 
                               WHEN phase_of_flight = "Take-off run" THEN "Ascent"
                               WHEN phase_of_flight = "Climb" THEN "Ascent"
                               WHEN phase_of_flight = "Descent" THEN "Descent"
                               WHEN phase_of_flight = "Approach" THEN "Descent"
-                              WHEN phase_of_flight = "Landing" THEN "Descent"
+                              WHEN phase_of_flight = "Landing Roll" THEN "Descent"
                             END as phase
                             , YEAR(Flight.flight_date) as Year
                             FROM BirdStrike
                             JOIN Flight
                             ON BirdStrike.flight_id = Flight.f_id
-                            GROUP BY YEAR(Flight.flight_date), phase')
+                            GROUP BY YEAR(Flight.flight_date), phase
+                            ORDER BY Year) t
+                            WHERE phase = ("Ascent" OR "Descent")')
 BirdstrikesPerYear
+```
 
-#rownames(BirdstrikesPerYear) <- c("Ascent", "Descent")
 
+```{r}
+
+library(ggplot2)
+data(BirdstrikesPerYear)
+head(BirdstrikesPerYear)
+
+condition <- BirdstrikesPerYear$phase
+years <- BirdstrikesPerYear$Year
+value <- BirdstrikesPerYear$incidents
+
+
+barChart <- ggplot(data = BirdstrikesPerYear, aes(fille = condition, x = years, y = value, fill = condition)) + geom_bar(stat = "identity", position = "dodge") + ggtitle("Incidents per Year by Phase")
+print(barChart)
+```
+
+```{r}
 # adorning the bar chart
 # link with help https://www.r-graph-gallery.com/211-basic-grouped-or-stacked-barplot.html
+
 barplot(
-    BirdstrikesPerYear,
-    beside = T,
+    table,
+    beside = TRUE,
     xlab = 'Years',
     ylab = 'Incidents',
     title = 'Bird Strikes Per Year By Phase of Flight',
-    legend = rownames(BirdstrikesPerYear)
 )
 ```
 
 
-8. (10 pts / 3 hrs) Create a stored procedure in MySQL (note that if you used SQLite, then you cannot complete this step) that removes a bird strike incident from the database. You may decide what you need to pass to the stored procedure to remove a bird strike incident, e.g., departure airport, airlines, or some ID. Show that the deletion worked as expected.
+### 8. (10 pts / 3 hrs) Create a stored procedure in MySQL (note that if you used SQLite, then you cannot complete this step) that removes a bird strike incident from the database. You may decide what you need to pass to the stored procedure to remove a bird strike incident, e.g., departure airport, airlines, or some ID. Show that the deletion worked as expected.
 
 ```{sql connection=mydb}
 DELIMETER // --might not need this delimiter thing
