@@ -1,7 +1,10 @@
 ---
 title: "Practicum 1 DB"
 output: html_notebook
+authors: Nathaniel Zeigler, Danielle Tolliver
 ---
+
+# Connecting to the AWS database
 
 ```{r}
 library(RMySQL)
@@ -29,6 +32,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- Turns on foreign key check
 SET FOREIGN_KEY_CHECKS = 1;
 ```
+
 
 # Creating the tables
 
@@ -220,6 +224,7 @@ CREATE TABLE Precipitation(
 SELECT * FROM Precipitation;
 ```
 
+
 # Cleaning the data
 
 ```{r}
@@ -296,6 +301,7 @@ birdStrike_df$Wildlife..Species[birdStrike_df$Wildlife..Species == "Unknown bird
 birdStrike_df$Pilot.warned.of.birds.or.wildlife.[birdStrike_df$Pilot.warned.of.birds.or.wildlife. == "Y"] <- "True"
 birdStrike_df$Pilot.warned.of.birds.or.wildlife.[birdStrike_df$Pilot.warned.of.birds.or.wildlife. == "N"] <- "False"
 ```     
+
 
 # Uploading the data
 
@@ -670,7 +676,8 @@ dbWriteTable(mydb, "Precipitation", PrecipTable, row.names = FALSE, append = TRU
 #dbSendQuery(mydb, query)
 ```
 
-## Practicum Questions
+
+# Practicum Questions
 
 ### 4. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents for each airline upon take-off or climb. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
@@ -709,26 +716,29 @@ FROM BirdStrike
 JOIN Flight
 ON BirdStrike.flight_id = Flight.f_id
 GROUP BY YEAR(Flight.flight_date)
+ORDER BY Year 
 ```
 
 ### 7. (10 pts / 3 hrs) Using the above data, build a column chart that visualizes the number of bird strikes incidents per year from 2008 to 2011 during take-off/climbing and during descent/approach/landing. Adorn the graph with appropriate axis labels.
 
 ```{r}
-take_off_climb_birdstrikes <- dbGetQuery(mydb, 'SELECT YEAR(flight_date) AS Year, COUNT(birdstrike_id) AS NumIncidents
+take_off_climb_birdstrikes <- dbGetQuery(mydb, 'SELECT YEAR(flight_date) AS Year
+                                                , COUNT(birdstrike_id) AS NumIncidents
                                                 FROM BirdStrike
-                                                     JOIN Flight
-                                                     ON flight_id = Flight.f_id
-                                                WHERE phase_of_flight IN ("Take-off run", "Climb") AND
-                                                      flight_date >= 2008 AND flight_date <= 2011
+                                                JOIN Flight
+                                                ON flight_id = Flight.f_id
+                                                WHERE phase_of_flight IN ("Take-off run", "Climb")
+                                                AND flight_date >= 2008 AND flight_date <= 2011
                                                 GROUP BY Year')
 
-landing_birdstrikes <- dbGetQuery(mydb, 'SELECT YEAR(flight_date) AS Year, COUNT(birdstrike_id) AS NumIncidents
-                                                FROM BirdStrike
-                                                     JOIN Flight
-                                                     ON flight_id = Flight.f_id
-                                                WHERE phase_of_flight IN ("Approach", "Descent", "Landing Roll") AND
-                                                      flight_date >= 2008 AND flight_date <= 2011
-                                                GROUP BY Year')
+landing_birdstrikes <- dbGetQuery(mydb, 'SELECT YEAR(flight_date) AS Year
+                                        , COUNT(birdstrike_id) AS NumIncidents
+                                        FROM BirdStrike
+                                        JOIN Flight
+                                        ON flight_id = Flight.f_id
+                                        WHERE phase_of_flight IN ("Approach", "Descent", "Landing Roll")
+                                        AND flight_date >= 2008 AND flight_date <= 2011
+                                        GROUP BY Year')
 
 take_off_climb_birdstrikes
 landing_birdstrikes
@@ -746,9 +756,7 @@ barplot(height = chart_df, by=Year, beside=TRUE
 
 
 ```{r}
-# TODO: check all dis! 
-
-# pulling together into a data frame
+# pulling the data together into a data frame
 BirdstrikesPerYear <- dbGetQuery(mydb, 
                             'SELECT * FROM 
                             (SELECT COUNT(BirdStrike.birdstrike_id) as incidents
@@ -763,81 +771,40 @@ BirdstrikesPerYear <- dbGetQuery(mydb,
                             FROM BirdStrike
                             JOIN Flight
                             ON BirdStrike.flight_id = Flight.f_id
+                            WHERE YEAR(Flight.flight_date) >= 2008
+                            and YEAR(Flight.flight_date) <= 2011
                             GROUP BY YEAR(Flight.flight_date), phase
                             ORDER BY Year) t
                             WHERE phase = ("Ascent" OR "Descent")')
 BirdstrikesPerYear
 ```
 
-
 ```{r}
-
+# installing the package to show the bar chart
 library(ggplot2)
-data(BirdstrikesPerYear)
-head(BirdstrikesPerYear)
 
+#initializing the data
+data(BirdstrikesPerYear)
 condition <- BirdstrikesPerYear$phase
 years <- BirdstrikesPerYear$Year
 incidents <- BirdstrikesPerYear$incidents
 
-
-barChart <- ggplot(data = BirdstrikesPerYear, aes(fille = condition, x = years, y = incidents, fill = condition)) + geom_bar(stat = "identity", position = "dodge") + ggtitle("Incidents per Year by Phase")
+# adorning the bar chart
+barChart <- ggplot(data = BirdstrikesPerYear, aes(fille = condition, x = years, y = incidents, fill = condition)) + geom_bar(stat = "identity", position = "dodge") + ggtitle("Bird Strikes Per Year By Phase of Flight")
 print(barChart)
 ```
-
-```{r}
-# adorning the bar chart
-# link with help https://www.r-graph-gallery.com/211-basic-grouped-or-stacked-barplot.html
-
-barplot(
-    table,
-    beside = TRUE,
-    xlab = 'Years',
-    ylab = 'Incidents',
-    title = 'Bird Strikes Per Year By Phase of Flight',
-)
-```
-
 
 ### 8. (10 pts / 3 hrs) Create a stored procedure in MySQL (note that if you used SQLite, then you cannot complete this step) that removes a bird strike incident from the database. You may decide what you need to pass to the stored procedure to remove a bird strike incident, e.g., departure airport, airlines, or some ID. Show that the deletion worked as expected.
 
 ```{sql connection=mydb}
-DROP PROCEDURE IF EXISTS Remove_BirdStrike;
-```
-
-```{sql connection=mydb}
-CREATE PROCEDURE Remove_BirdStrike (
-  IN birdstrike_id_to_delete INTEGER)
+DELIMETER // --might not need this delimiter thing
+CREATE PROCEDURE Remove_BirdStrike (IN birdstrike_id_to_delete INTEGER)
 BEGIN
-  -- Save the note_id, which will be needed for deletion later
-  DECLARE delete_note_id INTEGER;
-  SET delete_note_id = (SELECT BirdStrike.note_id
-                        FROM BirdStrike
-                        WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete);
-  
-  -- First remove the corresponding flight
-  DELETE FROM Flight WHERE Flight.f_id = (SELECT BirdStrike.flight_id
-                                          FROM BirdStrike
-                                          WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete);
-  
-  -- Then remove the associated precipitation records
-  DELETE FROM Precipitation WHERE Precipitation.birdstrike_id = birdstrike_id_to_delete;
-  
-  -- Then remove the birdstrike record
-  DELETE FROM BirdStrike WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete;
-  
-  -- Finally remove the note record
-  DELETE FROM Note WHERE Note.n_id = delete_note_id;
-
-END;
-```
-
-```{sql connection=mydb}
-SELECT * FROM BirdStrike;
-```
-
-```{sql connection=mydb}
-CALL Remove_BirdStrike(3500)
+  DELETE FROM Note WHERE Note.n_id = (SELECT BirdStrike.note_id FROM BirdStrike WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete)//
+  DELETE FROM Flight WHERE Flight.f_id = (SELECT BirdStrike.flight_id FROM BirdStrike WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete)//
+  DELETE FROM BirdStrike WHERE BirdStrike.birdstrike_id = birdstrike_id_to_delete//
+  DELETE FROM Precipitation WHERE Precipitation.birdstrike_id = birdstrike_id_to_delete//
+DELIMETER;
 ```
 
 ```{r}
