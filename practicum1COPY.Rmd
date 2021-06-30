@@ -255,6 +255,7 @@ birdStrike_df[is.na(birdStrike_df)] <- 'UNKNOWN'
 # make the row names a column for each row, which will be needed for loading data
 setDT(birdStrike_df, keep.rownames = TRUE)[] 
 names(birdStrike_df)[names(birdStrike_df) == "rn"] <- "UniqueKey"
+names(birdStrike_df)[names(birdStrike_df) == "ï..Record.ID"] <- "Record.ID"
 head(birdStrike_df)
 ```
 
@@ -277,8 +278,7 @@ for (row in 1:nrow(birdStrike_df)){
   birdStrike_df[row, "flight_date"] <- date_time_parsed
 }
 
-# Assumption:
-#  - For unknown dates, it is set to 1776
+# Assumption: for unknown dates, it is set to 1776
 ```
 
 ```{r}
@@ -428,8 +428,11 @@ StateFromAWS <- dbGetQuery(mydb, "SELECT * FROM State;")
 
 ```{r}
 # Start by joining in Aircraft data
-FlightTableWithAircraft <- sqldf('SELECT "UniqueKey" as f_id, "Record.ID" AS record_id, flight_date
-                                  , aircraft.a_id AS aircraft_id, aircraft.aircraft_name AS aircraft_name
+FlightTableWithAircraft <- sqldf('SELECT "UniqueKey" as f_id
+                                  , "Record.ID" AS record_id
+                                  , flight_date
+                                  , aircraft.a_id AS aircraft_id
+                                  , aircraft.aircraft_name AS aircraft_name
                                   , "Airport..Name" AS airport_name
                                   , "Origin.State" AS origin_state
                                   , "Aircraft..Airline.Operator"
@@ -448,13 +451,15 @@ FlightTableWithAircraft_State <- sqldf('SELECT *
 FlightTableWithAircraft_AirlineOperator <- sqldf('SELECT *
                                                 FROM FlightTableWithAircraft_State
                                                 JOIN AirlineOperatorFromAWS AS airlineOperator
-                                                 ON "Aircraft..Airline.Operator" = airlineOperator.airline_name')
+                                                ON "Aircraft..Airline.Operator" = airlineOperator.airline_name')
 
 # Then add in airport
-FlightTable <- sqldf('SELECT f_id, flight_date, aircraft_id, a_id AS origin_airport_id, ao_id AS airline_operator_id
-                                         FROM FlightTableWithAircraft_AirlineOperator
-                                         JOIN AirportFromAWS AS airport
-                                         ON FlightTableWithAircraft_AirlineOperator.airport_name = airport.airport_name AND airport.state_id = s_id')
+FlightTable <- sqldf('SELECT f_id, flight_date
+                     , aircraft_id, a_id AS origin_airport_id
+                     , ao_id AS airline_operator_id
+                     FROM FlightTableWithAircraft_AirlineOperator
+                     JOIN AirportFromAWS AS airport
+                     ON FlightTableWithAircraft_AirlineOperator.airport_name = airport.airport_name AND airport.state_id = s_id')
 head(FlightTable)
 ```
 
@@ -494,7 +499,7 @@ WildlifeFromAWS <- dbGetQuery(mydb, "SELECT * FROM Wildlife;")
 ```
 
 ```{r}
-BirdStrikeTable <- sqldf('SELECT "Record.ID"as birdstrike_id
+BirdStrikeTable <- sqldf('SELECT "Record.ID" as birdstrike_id
                          , "UniqueKey" AS flight_id
                          , "Wildlife..Number.struck" as number_struck_est
                          , "Wildlife..Number.Struck.Actual" as number_struck_actual
@@ -565,7 +570,8 @@ SET FOREIGN_KEY_CHECKS = 1;
 ### 4. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents for each airline upon take-off or climb. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
 
 ```{sql connection=mydb}
-SELECT COUNT(BirdStrike.birdstrike_id) AS incidents, airline_name
+SELECT COUNT(BirdStrike.birdstrike_id) AS incidents
+, airline_name
 FROM BirdStrike
 JOIN Flight
 ON BirdStrike.flight_id = Flight.f_id
@@ -682,7 +688,8 @@ CALL Remove_BirdStrike(315417)
 
 ```{sql connection=mydb}
 -- Attempting to select record based on birdstrike_id. If stored procedure is successful, no record is returned.
-SELECT * FROM BirdStrike WHERE birdstrike_id = 315417;
+SELECT * FROM BirdStrike 
+WHERE birdstrike_id = 315417;
 ```
 
 # Create View
