@@ -1,9 +1,9 @@
 ---
 title: "Practicum 1 DB"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 authors: Nathanial Ziegler, Danielle Tolliver
 emails: ziegler.n@northeastern.edu, tolliver.da@northeastern.edu
 ---
@@ -21,6 +21,7 @@ library(lubridate)
 library(dplyr)
 library(data.table)
 library(ggplot2)
+library(tinytex)
 
 options(sqldf.driver = "SQLite")
 ```
@@ -282,9 +283,10 @@ for (row in 1:nrow(birdStrike_df)){
 
 ```{r}
 # SQL command to confirm that data was correctly pulled
-sqldf('SELECT "UniqueKey", "FlightDate"
-      , "flight_date" 
-      FROM birdStrike_df')
+date_confirmation <- sqldf('SELECT "UniqueKey", "FlightDate"
+                           , "flight_date" 
+                           FROM birdStrike_df')
+head(date_confirmation)
 ```
 
 ## Cleaning Wildlife
