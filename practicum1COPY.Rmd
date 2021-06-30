@@ -1,9 +1,9 @@
 ---
 title: "Practicum 1 DB"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 authors: Nathanial Ziegler, Danielle Tolliver
 emails: ziegler.n@northeastern.edu, tolliver.da@northeastern.edu
 ---
