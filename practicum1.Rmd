@@ -1,8 +1,16 @@
 ---
 title: "Practicum 1 DB"
-output: html_notebook
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
 authors: Nathanial Ziegler, Danielle Tolliver
+emails: ziegler.n@northeastern.edu, tolliver.da@northeastern.edu
 ---
+
+# ERD
+
+![](Practicum1ERD.jpeg "Practicum ERD")
 
 # Load Libraries
 
@@ -38,11 +46,6 @@ dbListTables(mydb)
 ```{sql connection=mydb}
 -- Turns off foreign key check
 SET FOREIGN_KEY_CHECKS = 0;
-```
-
-```{sql connection=mydb}
--- Turns on foreign key check
-SET FOREIGN_KEY_CHECKS = 1;
 ```
 
 # Creating the tables
@@ -550,6 +553,11 @@ head(PrecipTable)
 dbWriteTable(mydb, "Precipitation", PrecipTable, row.names = FALSE, append = TRUE)
 ```
 
+```{sql connection=mydb}
+-- Turns on foreign key check now that data is uploaded
+SET FOREIGN_KEY_CHECKS = 1;
+```
+
 # Practicum Questions
 
 ### 4. (10 pts / 1 hr) Create a SQL query against your database to find the number of bird strike incidents for each airline upon take-off or climb. Include all airlines. You may either use a {sql} code chunk or an R function to execute the query.
@@ -618,7 +626,6 @@ BirdstrikesPerYear <- dbGetQuery(mydb,
                             WHERE phase = ("Ascent" OR "Descent")')
 
 #initializing the data
-data(BirdstrikesPerYear)
 condition <- BirdstrikesPerYear$phase
 years <- BirdstrikesPerYear$Year
 incidents <- BirdstrikesPerYear$incidents
@@ -676,7 +683,9 @@ CALL Remove_BirdStrike(315417)
 SELECT * FROM BirdStrike WHERE birdstrike_id = 315417;
 ```
 
-# Create View to Recreate CSV file that was provided at beginning of assignment
+# Create View
+
+## Recreate CSV file that was provided at beginning of assignment
 
 ```{sql connection=mydb}
 DROP VIEW IF EXISTS VW_master_table
