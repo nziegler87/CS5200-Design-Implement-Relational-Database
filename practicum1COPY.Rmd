@@ -10,7 +10,7 @@ emails: ziegler.n@northeastern.edu, tolliver.da@northeastern.edu
 
 # ERD
 
-![](Practicum1ERD.jpeg "Practicum ERD") <https://lucid.app/lucidchart/invitations/accept/inv_5008b57e-c7a0-403b-acf6-4c4c93856462?viewport_loc=-1270%2C-1079%2C2519%2C1721%2C2qcOW-XE2nwP>
+![](Practicum1ERD-2.jpeg "Practicum ERD") <https://lucid.app/lucidchart/invitations/accept/inv_5008b57e-c7a0-403b-acf6-4c4c93856462?viewport_loc=-1270%2C-1079%2C2519%2C1721%2C2qcOW-XE2nwP>
 
 # Load Libraries
 
