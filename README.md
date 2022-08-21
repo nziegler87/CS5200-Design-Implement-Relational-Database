@@ -7,3 +7,6 @@ For our first practicum, @tolliverdani worked together to review and understand 
 ### Final ERD
 ![ERD](./final_submission_files/ERD.png)
 
+### Final Submission File
+The knited .html file of our markdown file, which shows out database creation, data transfmormation and cleaning, and loading of the database can be found here: [Final Submission](./final_submission_files/practicum_1_submission.html)
+
